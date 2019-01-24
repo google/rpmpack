@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -102,19 +103,23 @@ func (r *rpm) Write(w io.Writer) error {
 func (r *rpm) writeSignatures(sigHeader *index, regHeader []byte) error {
 	sigHeader.Add(sigSize, Int32Entry([]int32{int32(r.payload.Len() + len(regHeader))}))
 	sigHeader.Add(sigSHA1, StringEntry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
+	sigHeader.Add(sigSHA256, StringEntry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
 	sigHeader.Add(sigPayloadSize, Int32Entry([]int32{int32(r.payloadSize)}))
 	return nil
 }
 
 func (r *rpm) writeGenIndexes(h *index) error {
 	h.Add(tagHeaderI18NTable, StringEntry("C"))
-	h.Add(tagSize, Int32Entry([]int32{int32(r.payload.Len())}))
+	h.Add(tagSize, Int32Entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, StringEntry(r.Name))
 	h.Add(tagVersion, StringEntry(r.Version))
 	h.Add(tagRelease, StringEntry(r.Release))
 	h.Add(tagPayloadFormat, StringEntry("cpio"))
 	h.Add(tagPayloadCompressor, StringEntry("gzip"))
 	h.Add(tagPayloadFlags, StringEntry("9"))
+	h.Add(tagOS, StringEntry("linux"))
+	h.Add(tagArch, StringEntry("noarch"))
+	h.Add(tagProvides, StringEntry(r.Name))
 	return nil
 }
 
@@ -123,6 +128,12 @@ func (r *rpm) writeFileIndexes(h *index) error {
 	h.Add(tagBasenames, StringArrayEntry(r.basenames))
 	h.Add(tagDirindexes, Int32Entry(r.dirindexes))
 	h.Add(tagDirnames, StringArrayEntry(r.di.AllDirs()))
+
+	inodes := make([]int32, len(r.dirindexes))
+	for ii := range inodes {
+		inodes[ii] = int32(ii + 1)
+	}
+	h.Add(tagFileINodes, Int32Entry(inodes))
 	return nil
 }
 
@@ -136,10 +147,13 @@ func (r *rpm) AddFile(f RPMFile) error {
 }
 
 func (r *rpm) writePayload(f RPMFile) error {
+	chash := cpio.NewHash()
+	chash.Write(f.Body)
 	hdr := &cpio.Header{
-		Name: f.Name,
-		Mode: cpio.FileMode(f.Mode),
-		Size: int64(len(f.Body)),
+		Name:     f.Name,
+		Mode:     cpio.FileMode(f.Mode),
+		Size:     int64(len(f.Body)),
+		Checksum: cpio.Checksum(chash.Sum32()),
 	}
 	if err := r.cpio.WriteHeader(hdr); err != nil {
 		return err
@@ -148,5 +162,5 @@ func (r *rpm) writePayload(f RPMFile) error {
 		return err
 	}
 	r.payloadSize += len(f.Body)
-	return r.cpio.Close()
+	return nil
 }
