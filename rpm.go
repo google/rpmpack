@@ -2,8 +2,12 @@ package rpmpack
 
 import (
 	"bytes"
+	"compress/gzip"
+	"crypto/sha1"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"path"
 
 	cpio "github.com/cavaliercoder/go-cpio"
@@ -26,23 +30,30 @@ type RPMFile struct {
 }
 
 type rpm struct {
-	md         RPMMetaData
-	di         *DirIndex
-	payload    *bytes.Buffer
-	cpio       *cpio.Writer
-	basenames  []string
-	dirindexes []int32
-	closed     bool
+	RPMMetaData
+	di          *DirIndex
+	payload     *bytes.Buffer
+	payloadSize int
+	cpio        *cpio.Writer
+	basenames   []string
+	dirindexes  []int32
+	closed      bool
+	gz_payload  *gzip.Writer
 }
 
-func NewRPM(m RPMMetaData) *rpm {
+func NewRPM(m RPMMetaData) (*rpm, error) {
 	p := &bytes.Buffer{}
-	return &rpm{
-		md:      m,
-		di:      NewDirIndex(),
-		payload: p,
-		cpio:    cpio.NewWriter(p),
+	z, err := gzip.NewWriterLevel(p, 9)
+	if err != nil {
+		return nil, err
 	}
+	return &rpm{
+		RPMMetaData: m,
+		di:          NewDirIndex(),
+		payload:     p,
+		gz_payload:  z,
+		cpio:        cpio.NewWriter(z),
+	}, nil
 }
 
 // Write closes the rpm and writes the whole rpm to an io.Writer
@@ -53,25 +64,58 @@ func (r *rpm) Write(w io.Writer) error {
 	if err := r.cpio.Close(); err != nil {
 		return err
 	}
+	if err := r.gz_payload.Close(); err != nil {
+		return err
+	}
 
-	if _, err := w.Write(Lead(r.md.Name, r.md.Version, r.md.Release)); err != nil {
+	if _, err := w.Write(Lead(r.Name, r.Version, r.Release)); err != nil {
 		return err
 	}
-	s := NewIndex(signatures)
-	if err := s.Write(w); err != nil {
-		return err
-	}
+	// Write the regular header.
 	h := NewIndex(immutable)
+	r.writeGenIndexes(h)
 	r.writeFileIndexes(h)
-	if err := h.Write(w); err != nil {
+	hb, err := h.Bytes()
+	if err != nil {
+		return err
+	}
+	// Write the signatures
+	s := NewIndex(signatures)
+	r.writeSignatures(s, hb)
+	sb, err := s.Bytes()
+	if err != nil {
 		return err
 	}
 
+	w.Write(sb)
+	//Signatures are padded to 8-byte boundaries
+	w.Write(make([]byte, (8-len(sb)%8)%8))
+	w.Write(hb)
 	if _, err := w.Write(r.payload.Bytes()); err != nil {
 		return err
 	}
 	return nil
 
+}
+
+// Only call this after the payload and header were written.
+func (r *rpm) writeSignatures(sigHeader *index, regHeader []byte) error {
+	sigHeader.Add(sigSize, Int32Entry([]int32{int32(r.payload.Len() + len(regHeader))}))
+	sigHeader.Add(sigSHA1, StringEntry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
+	sigHeader.Add(sigPayloadSize, Int32Entry([]int32{int32(r.payloadSize)}))
+	return nil
+}
+
+func (r *rpm) writeGenIndexes(h *index) error {
+	h.Add(tagHeaderI18NTable, StringEntry("C"))
+	h.Add(tagSize, Int32Entry([]int32{int32(r.payload.Len())}))
+	h.Add(tagName, StringEntry(r.Name))
+	h.Add(tagVersion, StringEntry(r.Version))
+	h.Add(tagRelease, StringEntry(r.Release))
+	h.Add(tagPayloadFormat, StringEntry("cpio"))
+	h.Add(tagPayloadCompressor, StringEntry("gzip"))
+	h.Add(tagPayloadFlags, StringEntry("9"))
+	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
@@ -87,6 +131,7 @@ func (r *rpm) AddFile(f RPMFile) error {
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
 	r.writePayload(f)
+	log.Printf("basenames: %v\ndirindex:%v\n", r.basenames, r.dirindexes)
 	return nil
 }
 
@@ -102,5 +147,6 @@ func (r *rpm) writePayload(f RPMFile) error {
 	if _, err := r.cpio.Write(f.Body); err != nil {
 		return err
 	}
-	return nil
+	r.payloadSize += len(f.Body)
+	return r.cpio.Close()
 }

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/google/rpmpack"
@@ -11,15 +12,25 @@ import (
 
 func main() {
 
-	r := rpmpack.NewRPM(rpmpack.RPMMetaData{
+	r, err := rpmpack.NewRPM(rpmpack.RPMMetaData{
 		Name:    "rpmsample",
 		Version: "0.1",
 		Release: "A",
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	r.AddFile(
 		rpmpack.RPMFile{
 			Name: "./var/lib/rpmpack/sample.txt",
 			Body: []byte("testsample\n"),
+			Mode: 0600,
+		})
+	r.AddFile(
+		rpmpack.RPMFile{
+			Name: "./var/lib/rpmpack/sample2.txt",
+			Body: []byte("testsample2\n"),
+			Mode: 0600,
 		})
 	r.Write(os.Stdout)
 

@@ -13,6 +13,7 @@ const (
 	immutable  = 0x3f
 
 	typeInt32       = 0x04
+	typeString      = 0x06
 	typeBinary      = 0x07
 	typeStringArray = 0x08
 )
@@ -44,8 +45,12 @@ func StringArrayEntry(value []string) indexEntry {
 func BinaryEntry(value []byte) indexEntry {
 	return indexEntry{typeBinary, len(value), value}
 }
+func StringEntry(value string) indexEntry {
+	return indexEntry{typeString, 1, append([]byte(value), byte(00))}
+}
 
 func Int32Entry(value []int32) indexEntry {
+
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, value)
 	return indexEntry{typeInt32, len(value), b.Bytes()}
@@ -78,8 +83,9 @@ func pad(w io.Writer, rpmtype, offset int) {
 	}
 }
 
-// Write finalizes the index and writes it.
-func (i *index) Write(w io.Writer) error {
+// Write finalizes the index and returns the bytes.
+func (i *index) Bytes() ([]byte, error) {
+	w := &bytes.Buffer{}
 	// Even the header has three parts: The lead, the index entries, and the entries.
 	// Because of alignment, we can only tell the actual size and offset after writing
 	// the entries.
@@ -97,11 +103,11 @@ func (i *index) Write(w io.Writer) error {
 	// 4 magic and 4 reserved
 	w.Write([]byte{0x8e, 0xad, 0xe8, 0x01, 0, 0, 0, 0})
 	// 4 count and 4 size
-	// We add the pseudo-entry "selfddHeader" to count.
+	// We add the pseudo-entry "eigenHeader" to count.
 	if err := binary.Write(w, binary.BigEndian, []int32{int32(len(i.entries)) + 1, int32(entryData.Len())}); err != nil {
-		return err
+		return nil, err
 	}
-	// Write the selfHeader index entry
+	// Write the eigenHeader index entry
 	w.Write(i.eigenHeader().indexBytes(i.h, entryData.Len()-0x10))
 	// Write all of the other index entries
 	for ii, tag := range tags {
@@ -109,7 +115,7 @@ func (i *index) Write(w io.Writer) error {
 		w.Write(e.indexBytes(tag, offsets[ii]))
 	}
 	w.Write(entryData.Bytes())
-	return nil
+	return w.Bytes(), nil
 }
 
 // the eigenHeader is a weird entry. Its index entry is sorted first, but its content
