@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"path"
 
 	cpio "github.com/cavaliercoder/go-cpio"
@@ -25,9 +24,12 @@ type RPMMetaData struct {
 }
 
 type RPMFile struct {
-	Name string
-	Body []byte
-	Mode int
+	Name  string
+	Body  []byte
+	Mode  int
+	Owner string
+	Group string
+	MTime int32
 }
 
 type rpm struct {
@@ -38,6 +40,11 @@ type rpm struct {
 	cpio        *cpio.Writer
 	basenames   []string
 	dirindexes  []int32
+	filesizes   []int32
+	filemodes   []int16
+	fileowners  []string
+	filegroups  []string
+	filemtimes  []int32
 	closed      bool
 	gz_payload  *gzip.Writer
 }
@@ -128,6 +135,11 @@ func (r *rpm) writeFileIndexes(h *index) error {
 	h.Add(tagBasenames, StringArrayEntry(r.basenames))
 	h.Add(tagDirindexes, Int32Entry(r.dirindexes))
 	h.Add(tagDirnames, StringArrayEntry(r.di.AllDirs()))
+	h.Add(tagFileSizes, Int32Entry(r.filesizes))
+	h.Add(tagFileModes, Int16Entry(r.filemodes))
+	h.Add(tagFileUserName, StringArrayEntry(r.fileowners))
+	h.Add(tagFileGroupName, StringArrayEntry(r.filegroups))
+	h.Add(tagFileMTimes, Int32Entry(r.filemtimes))
 
 	inodes := make([]int32, len(r.dirindexes))
 	for ii := range inodes {
@@ -141,8 +153,12 @@ func (r *rpm) AddFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
+	r.filesizes = append(r.filesizes, int32(len(f.Body)))
+	r.filemodes = append(r.filemodes, int16(f.Mode))
+	r.fileowners = append(r.fileowners, f.Group)
+	r.filegroups = append(r.filegroups, f.Owner)
+	r.filemtimes = append(r.filemtimes, f.MTime)
 	r.writePayload(f)
-	log.Printf("basenames: %v\ndirindex:%v\n", r.basenames, r.dirindexes)
 	return nil
 }
 

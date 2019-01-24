@@ -12,6 +12,7 @@ const (
 	signatures = 0x3e
 	immutable  = 0x3f
 
+	typeInt16       = 0x03
 	typeInt32       = 0x04
 	typeString      = 0x06
 	typeBinary      = 0x07
@@ -19,6 +20,7 @@ const (
 )
 
 var boundaries = map[int]int{
+	typeInt16: 2,
 	typeInt32: 4,
 }
 
@@ -50,10 +52,15 @@ func StringEntry(value string) indexEntry {
 }
 
 func Int32Entry(value []int32) indexEntry {
-
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, value)
 	return indexEntry{typeInt32, len(value), b.Bytes()}
+}
+
+func Int16Entry(value []int16) indexEntry {
+	b := &bytes.Buffer{}
+	binary.Write(b, binary.BigEndian, value)
+	return indexEntry{typeInt16, len(value), b.Bytes()}
 }
 
 type index struct {

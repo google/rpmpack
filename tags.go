@@ -15,6 +15,11 @@ const (
 	tagSize              = 0x03f1 // 1009
 	tagOS                = 0x03fd // 1021
 	tagArch              = 0x03fe // 1022
+	tagFileSizes         = 0x0404 // 1028
+	tagFileModes         = 0x0406 // 1030
+	tagFileMTimes        = 0x040a // 1034
+	tagFileUserName      = 0x040f // 1039
+	tagFileGroupName     = 0x0410 // 1040
 	tagProvides          = 0x0417 // 1047
 	tagFileINodes        = 0x0448 // 1096
 	tagPrefixes          = 0x044a // 1098
