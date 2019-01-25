@@ -55,9 +55,10 @@ type Opts struct {
 	Mtime int
 }
 
-type rpm struct {
+// RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
+type RPM struct {
 	RPMMetaData
-	di          *DirIndex
+	di          *dirIndex
 	payload     *bytes.Buffer
 	payloadSize int
 	cpio        *cpio.Writer
@@ -72,15 +73,15 @@ type rpm struct {
 	gz_payload  *gzip.Writer
 }
 
-func NewRPM(m RPMMetaData) (*rpm, error) {
+func NewRPM(m RPMMetaData) (*RPM, error) {
 	p := &bytes.Buffer{}
 	z, err := gzip.NewWriterLevel(p, 9)
 	if err != nil {
 		return nil, err
 	}
-	return &rpm{
+	return &RPM{
 		RPMMetaData: m,
-		di:          NewDirIndex(),
+		di:          newDirIndex(),
 		payload:     p,
 		gz_payload:  z,
 		cpio:        cpio.NewWriter(z),
@@ -88,7 +89,7 @@ func NewRPM(m RPMMetaData) (*rpm, error) {
 }
 
 // Write closes the rpm and writes the whole rpm to an io.Writer
-func (r *rpm) Write(w io.Writer) error {
+func (r *RPM) Write(w io.Writer) error {
 	if r.closed {
 		return ErrWriteAfterClose
 	}
@@ -99,11 +100,11 @@ func (r *rpm) Write(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(Lead(r.Name, r.Version, r.Release)); err != nil {
+	if _, err := w.Write(lead(r.Name, r.Version, r.Release)); err != nil {
 		return err
 	}
 	// Write the regular header.
-	h := NewIndex(immutable)
+	h := newIndex(immutable)
 	r.writeGenIndexes(h)
 	r.writeFileIndexes(h)
 	hb, err := h.Bytes()
@@ -111,7 +112,7 @@ func (r *rpm) Write(w io.Writer) error {
 		return err
 	}
 	// Write the signatures
-	s := NewIndex(signatures)
+	s := newIndex(signatures)
 	r.writeSignatures(s, hb)
 	sb, err := s.Bytes()
 	if err != nil {
@@ -130,49 +131,50 @@ func (r *rpm) Write(w io.Writer) error {
 }
 
 // Only call this after the payload and header were written.
-func (r *rpm) writeSignatures(sigHeader *index, regHeader []byte) error {
-	sigHeader.Add(sigSize, Int32Entry([]int32{int32(r.payload.Len() + len(regHeader))}))
-	sigHeader.Add(sigSHA1, StringEntry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
-	sigHeader.Add(sigSHA256, StringEntry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
-	sigHeader.Add(sigPayloadSize, Int32Entry([]int32{int32(r.payloadSize)}))
+func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
+	sigHeader.Add(sigSize, int32Entry([]int32{int32(r.payload.Len() + len(regHeader))}))
+	sigHeader.Add(sigSHA1, stringEntry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
+	sigHeader.Add(sigSHA256, stringEntry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
+	sigHeader.Add(sigPayloadSize, int32Entry([]int32{int32(r.payloadSize)}))
 	return nil
 }
 
-func (r *rpm) writeGenIndexes(h *index) error {
-	h.Add(tagHeaderI18NTable, StringEntry("C"))
-	h.Add(tagSize, Int32Entry([]int32{int32(r.payloadSize)}))
-	h.Add(tagName, StringEntry(r.Name))
-	h.Add(tagVersion, StringEntry(r.Version))
-	h.Add(tagRelease, StringEntry(r.Release))
-	h.Add(tagPayloadFormat, StringEntry("cpio"))
-	h.Add(tagPayloadCompressor, StringEntry("gzip"))
-	h.Add(tagPayloadFlags, StringEntry("9"))
-	h.Add(tagOS, StringEntry("linux"))
-	h.Add(tagArch, StringEntry("noarch"))
-	h.Add(tagProvides, StringEntry(r.Name))
+func (r *RPM) writeGenIndexes(h *index) error {
+	h.Add(tagHeaderI18NTable, stringEntry("C"))
+	h.Add(tagSize, int32Entry([]int32{int32(r.payloadSize)}))
+	h.Add(tagName, stringEntry(r.Name))
+	h.Add(tagVersion, stringEntry(r.Version))
+	h.Add(tagRelease, stringEntry(r.Release))
+	h.Add(tagPayloadFormat, stringEntry("cpio"))
+	h.Add(tagPayloadCompressor, stringEntry("gzip"))
+	h.Add(tagPayloadFlags, stringEntry("9"))
+	h.Add(tagOS, stringEntry("linux"))
+	h.Add(tagArch, stringEntry("noarch"))
+	h.Add(tagProvides, stringEntry(r.Name))
 	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
-func (r *rpm) writeFileIndexes(h *index) error {
-	h.Add(tagBasenames, StringArrayEntry(r.basenames))
-	h.Add(tagDirindexes, Int32Entry(r.dirindexes))
-	h.Add(tagDirnames, StringArrayEntry(r.di.AllDirs()))
-	h.Add(tagFileSizes, Int32Entry(r.filesizes))
-	h.Add(tagFileModes, Int16Entry(r.filemodes))
-	h.Add(tagFileUserName, StringArrayEntry(r.fileowners))
-	h.Add(tagFileGroupName, StringArrayEntry(r.filegroups))
-	h.Add(tagFileMTimes, Int32Entry(r.filemtimes))
+func (r *RPM) writeFileIndexes(h *index) error {
+	h.Add(tagBasenames, stringArrayEntry(r.basenames))
+	h.Add(tagDirindexes, int32Entry(r.dirindexes))
+	h.Add(tagDirnames, stringArrayEntry(r.di.AllDirs()))
+	h.Add(tagFileSizes, int32Entry(r.filesizes))
+	h.Add(tagFileModes, int16Entry(r.filemodes))
+	h.Add(tagFileUserName, stringArrayEntry(r.fileowners))
+	h.Add(tagFileGroupName, stringArrayEntry(r.filegroups))
+	h.Add(tagFileMTimes, int32Entry(r.filemtimes))
 
 	inodes := make([]int32, len(r.dirindexes))
 	for ii := range inodes {
 		inodes[ii] = int32(ii + 1)
 	}
-	h.Add(tagFileINodes, Int32Entry(inodes))
+	h.Add(tagFileINodes, int32Entry(inodes))
 	return nil
 }
 
-func (r *rpm) AddFile(f RPMFile) error {
+// AddFile adds an RPMFile to an existing rpm.
+func (r *RPM) AddFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
@@ -185,7 +187,7 @@ func (r *rpm) AddFile(f RPMFile) error {
 	return nil
 }
 
-func (r *rpm) writePayload(f RPMFile) error {
+func (r *RPM) writePayload(f RPMFile) error {
 	chash := cpio.NewHash()
 	chash.Write(f.Body)
 	hdr := &cpio.Header{

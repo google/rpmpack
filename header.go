@@ -49,7 +49,7 @@ func (e indexEntry) indexBytes(tag, contentOffset int) []byte {
 	return b.Bytes()
 }
 
-func StringArrayEntry(value []string) indexEntry {
+func stringArrayEntry(value []string) indexEntry {
 	b := [][]byte{}
 	for _, v := range value {
 		b = append(b, []byte(v))
@@ -58,20 +58,20 @@ func StringArrayEntry(value []string) indexEntry {
 	return indexEntry{typeStringArray, len(value), bb}
 }
 
-func BinaryEntry(value []byte) indexEntry {
+func binaryEntry(value []byte) indexEntry {
 	return indexEntry{typeBinary, len(value), value}
 }
-func StringEntry(value string) indexEntry {
+func stringEntry(value string) indexEntry {
 	return indexEntry{typeString, 1, append([]byte(value), byte(00))}
 }
 
-func Int32Entry(value []int32) indexEntry {
+func int32Entry(value []int32) indexEntry {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, value)
 	return indexEntry{typeInt32, len(value), b.Bytes()}
 }
 
-func Int16Entry(value []int16) indexEntry {
+func int16Entry(value []int16) indexEntry {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, value)
 	return indexEntry{typeInt16, len(value), b.Bytes()}
@@ -83,7 +83,7 @@ type index struct {
 	h       int
 }
 
-func NewIndex(h int) *index {
+func newIndex(h int) *index {
 	return &index{entries: make(map[int]indexEntry), h: h}
 }
 func (i *index) Add(tag int, e indexEntry) {
@@ -147,10 +147,10 @@ func (i *index) Bytes() ([]byte, error) {
 func (i *index) eigenHeader() indexEntry {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, []int32{int32(i.h), int32(typeBinary), -int32(0x10 * (len(i.entries) + 1)), int32(0x10)})
-	return BinaryEntry(b.Bytes())
+	return binaryEntry(b.Bytes())
 }
 
-func Lead(name, version, release string) []byte {
+func lead(name, version, release string) []byte {
 	// RPM format = 0xedabeedb
 	// version 3.0 = 0x0300
 	// type binary = 0x0000
