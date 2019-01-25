@@ -32,8 +32,10 @@ const (
 	tagFileSizes         = 0x0404 // 1028
 	tagFileModes         = 0x0406 // 1030
 	tagFileMTimes        = 0x040a // 1034
+	tagFileDigests       = 0x040b // 1035
 	tagFileUserName      = 0x040f // 1039
 	tagFileGroupName     = 0x0410 // 1040
+	tagFileVerifyFlags   = 0x0415 // 1045
 	tagProvides          = 0x0417 // 1047
 	tagFileINodes        = 0x0448 // 1096
 	tagPrefixes          = 0x044a // 1098
@@ -43,4 +45,5 @@ const (
 	tagPayloadFormat     = 0x0464 // 1124
 	tagPayloadCompressor = 0x0465 // 1125
 	tagPayloadFlags      = 0x0466 // 1126
+	tagFileDigestAlgo    = 0x1393 // 5011
 )

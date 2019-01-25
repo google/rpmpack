@@ -69,10 +69,12 @@ type RPM struct {
 	fileowners  []string
 	filegroups  []string
 	filemtimes  []int32
+	filedigests []string
 	closed      bool
 	gz_payload  *gzip.Writer
 }
 
+// Create and return a new RPM struct.
 func NewRPM(m RPMMetaData) (*RPM, error) {
 	p := &bytes.Buffer{}
 	z, err := gzip.NewWriterLevel(p, 9)
@@ -164,12 +166,28 @@ func (r *RPM) writeFileIndexes(h *index) error {
 	h.Add(tagFileUserName, stringArrayEntry(r.fileowners))
 	h.Add(tagFileGroupName, stringArrayEntry(r.filegroups))
 	h.Add(tagFileMTimes, int32Entry(r.filemtimes))
+	h.Add(tagFileDigests, stringArrayEntry(r.filedigests))
 
+	// is inodes just a range from 1..len(dirindexes)? maybe different with symlinks or dirs..
 	inodes := make([]int32, len(r.dirindexes))
 	for ii := range inodes {
 		inodes[ii] = int32(ii + 1)
 	}
 	h.Add(tagFileINodes, int32Entry(inodes))
+
+	// We only use the sha256 digest algo, tag=8
+	digestAlgo := make([]int32, len(r.dirindexes))
+	for ii := range digestAlgo {
+		digestAlgo[ii] = int32(8)
+	}
+	h.Add(tagFileDigestAlgo, int32Entry(digestAlgo))
+	//With regular files, it seems like we can always enable all of the veriy flags
+	verifyFlags := make([]int32, len(r.dirindexes))
+	for ii := range verifyFlags {
+		verifyFlags[ii] = int32(-1)
+	}
+	h.Add(tagFileVerifyFlags, int32Entry(verifyFlags))
+
 	return nil
 }
 
@@ -183,6 +201,7 @@ func (r *RPM) AddFile(f RPMFile) error {
 	r.fileowners = append(r.fileowners, f.Group)
 	r.filegroups = append(r.filegroups, f.Owner)
 	r.filemtimes = append(r.filemtimes, f.MTime)
+	r.filedigests = append(r.filedigests, fmt.Sprintf("%x", sha256.Sum256(f.Body)))
 	r.writePayload(f)
 	return nil
 }
