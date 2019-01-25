@@ -46,6 +46,15 @@ type RPMFile struct {
 	MTime int32
 }
 
+// Opts is used to specify global options for all files in an rpm,
+// to be used in functions that accept a list of file names.
+type Opts struct {
+	Owner string
+	Group string
+	Mode  int
+	Mtime int
+}
+
 type rpm struct {
 	RPMMetaData
 	di          *DirIndex
