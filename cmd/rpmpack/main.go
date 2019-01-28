@@ -33,7 +33,7 @@ var (
 	owner = flag.String("owner", "root", "use `NAME` as owner")
 	group = flag.String("group", "root", "use `NAME` as group")
 	mode  = flag.String("mode", "0644", "octal mode of files. Setting to 0 will read the permission bits from the files.")
-	mtime = flag.Int("mtime", 0, "change timestamp of files")
+	mtime = flag.Uint("mtime", 0, "change timestamp of files")
 )
 
 func usage() {
@@ -52,7 +52,7 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
-	var m int
+	var m uint
 	if *mode != "" {
 		m64, err := strconv.ParseInt(*mode, 8, 64)
 		if err != nil {
@@ -60,7 +60,7 @@ func main() {
 			flag.Usage()
 			os.Exit(2)
 		}
-		m = int(m64)
+		m = uint(m64)
 	}
 
 	w := os.Stdout
@@ -86,7 +86,7 @@ func main() {
 			Mode:  m,
 			Mtime: *mtime,
 		}); err != nil {
-		fmt.Fprintf(os.Stderr, "rpmpack error: %v", err)
+		fmt.Fprintf(os.Stderr, "rpmpack error: %v\n", err)
 		os.Exit(1)
 	}
 

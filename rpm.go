@@ -19,16 +19,18 @@ import (
 	"compress/gzip"
 	"crypto/sha1"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"path"
 
 	cpio "github.com/cavaliercoder/go-cpio"
+	"github.com/pkg/errors"
 )
 
 var (
 	ErrWriteAfterClose = errors.New("rpm write after close")
+	// ErrWrongFileOrder is returned when files are not sorted by name.
+	ErrWrongFileOrder = errors.New("wrong file addition order")
 )
 
 type RPMMetaData struct {
@@ -72,6 +74,7 @@ type RPM struct {
 	filedigests []string
 	closed      bool
 	gz_payload  *gzip.Writer
+	lastName    string
 }
 
 // Create and return a new RPM struct.
@@ -79,7 +82,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	p := &bytes.Buffer{}
 	z, err := gzip.NewWriterLevel(p, 9)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create gzip writer")
 	}
 	return &RPM{
 		RPMMetaData: m,
@@ -96,14 +99,14 @@ func (r *RPM) Write(w io.Writer) error {
 		return ErrWriteAfterClose
 	}
 	if err := r.cpio.Close(); err != nil {
-		return err
+		return errors.Wrap(err, "failed to close cpio payload")
 	}
 	if err := r.gz_payload.Close(); err != nil {
-		return err
+		return errors.Wrap(err, "failed to close gzip payload")
 	}
 
 	if _, err := w.Write(lead(r.Name, r.Version, r.Release)); err != nil {
-		return err
+		return errors.Wrap(err, "failed to write lead")
 	}
 	// Write the regular header.
 	h := newIndex(immutable)
@@ -111,24 +114,22 @@ func (r *RPM) Write(w io.Writer) error {
 	r.writeFileIndexes(h)
 	hb, err := h.Bytes()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to retrieve header")
 	}
 	// Write the signatures
 	s := newIndex(signatures)
 	r.writeSignatures(s, hb)
 	sb, err := s.Bytes()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to retrieve signatures header")
 	}
 
 	w.Write(sb)
 	//Signatures are padded to 8-byte boundaries
 	w.Write(make([]byte, (8-len(sb)%8)%8))
 	w.Write(hb)
-	if _, err := w.Write(r.payload.Bytes()); err != nil {
-		return err
-	}
-	return nil
+	_, err = w.Write(r.payload.Bytes())
+	return errors.Wrap(err, "failed to write payload")
 
 }
 
@@ -195,7 +196,13 @@ func (r *RPM) writeFileIndexes(h *index) error {
 }
 
 // AddFile adds an RPMFile to an existing rpm.
+// WARNING: The files must be sorted by name in ascending order,
+// as required by rpm.
 func (r *RPM) AddFile(f RPMFile) error {
+	if f.Name <= r.lastName {
+		return errors.Wrapf(ErrWrongFileOrder, "file %q after file %q", f.Name, r.lastName)
+	}
+	r.lastName = f.Name
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
@@ -219,10 +226,10 @@ func (r *RPM) writePayload(f RPMFile) error {
 		Checksum: cpio.Checksum(chash.Sum32()),
 	}
 	if err := r.cpio.WriteHeader(hdr); err != nil {
-		return err
+		return errors.Wrap(err, "failed to write payload file header")
 	}
 	if _, err := r.cpio.Write(f.Body); err != nil {
-		return err
+		return errors.Wrap(err, "failed to write payload file content")
 	}
 	r.payloadSize += uint(len(f.Body))
 	return nil

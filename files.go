@@ -19,6 +19,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sort"
+
+	"github.com/pkg/errors"
 )
 
 func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
@@ -27,6 +30,7 @@ func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
 	if err != nil {
 		return err
 	}
+	sort.Strings(files)
 	for _, f := range files {
 		fmode := opts.Mode
 		// Deduce mode from file
@@ -42,14 +46,16 @@ func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
 		if err != nil {
 			return err
 		}
-		r.AddFile(
+		if err := r.AddFile(
 			RPMFile{
 				Name:  path.Join("/", f),
 				Body:  b,
 				Mode:  fmode,
 				Owner: opts.Owner,
 				Group: opts.Group,
-			})
+			}); err != nil {
+			return errors.Wrapf(err, "failed to add file (%q)", f)
+		}
 
 	}
 	return r.Write(w)
