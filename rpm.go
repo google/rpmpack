@@ -152,7 +152,10 @@ func (r *RPM) writeGenIndexes(h *index) error {
 	h.Add(tagPayloadFlags, entry("9"))
 	h.Add(tagOS, entry("linux"))
 	h.Add(tagArch, entry("noarch"))
+	// A package must provide itself...
 	h.Add(tagProvides, entry(r.Name))
+	h.Add(tagProvideVersion, entry(r.Version+"-"+r.Release))
+	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
 	return nil
 }
 

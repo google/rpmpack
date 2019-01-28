@@ -39,6 +39,8 @@ const (
 	tagProvides          = 0x0417 // 1047
 	tagFileINodes        = 0x0448 // 1096
 	tagPrefixes          = 0x044a // 1098
+	tagProvideFlags      = 0x0458 // 1112
+	tagProvideVersion    = 0x0459 // 1113
 	tagDirindexes        = 0x045c // 1116
 	tagBasenames         = 0x045d // 1117
 	tagDirnames          = 0x045e // 1118
