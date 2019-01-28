@@ -33,6 +33,8 @@ const (
 	typeStringArray = 0x08
 )
 
+// Only integer types are aligned. This is not just an optimization - some versions
+// of rpm fail when integers are not aligned. Other versions fail when non-integers are aligned.
 var boundaries = map[int]int{
 	typeInt16: 2,
 	typeInt32: 4,
@@ -49,32 +51,35 @@ func (e indexEntry) indexBytes(tag, contentOffset int) []byte {
 	return b.Bytes()
 }
 
-func stringArrayEntry(value []string) indexEntry {
-	b := [][]byte{}
-	for _, v := range value {
-		b = append(b, []byte(v))
+func intEntry(rpmtype, size int, value interface{}) indexEntry {
+	b := &bytes.Buffer{}
+	binary.Write(b, binary.BigEndian, value)
+	return indexEntry{rpmtype, size, b.Bytes()}
+}
+
+func entry(value interface{}) indexEntry {
+	switch value := value.(type) {
+	case []int16:
+		return intEntry(typeInt16, len(value), value)
+	case []uint16:
+		return intEntry(typeInt16, len(value), value)
+	case []int32:
+		return intEntry(typeInt32, len(value), value)
+	case []uint32:
+		return intEntry(typeInt32, len(value), value)
+	case string:
+		return indexEntry{typeString, 1, append([]byte(value), byte(00))}
+	case []byte:
+		return indexEntry{typeBinary, len(value), value}
+	case []string:
+		b := [][]byte{}
+		for _, v := range value {
+			b = append(b, []byte(v))
+		}
+		bb := append(bytes.Join(b, []byte{00}), byte(00))
+		return indexEntry{typeStringArray, len(value), bb}
 	}
-	bb := append(bytes.Join(b, []byte{00}), byte(00))
-	return indexEntry{typeStringArray, len(value), bb}
-}
-
-func binaryEntry(value []byte) indexEntry {
-	return indexEntry{typeBinary, len(value), value}
-}
-func stringEntry(value string) indexEntry {
-	return indexEntry{typeString, 1, append([]byte(value), byte(00))}
-}
-
-func int32Entry(value []int32) indexEntry {
-	b := &bytes.Buffer{}
-	binary.Write(b, binary.BigEndian, value)
-	return indexEntry{typeInt32, len(value), b.Bytes()}
-}
-
-func int16Entry(value []int16) indexEntry {
-	b := &bytes.Buffer{}
-	binary.Write(b, binary.BigEndian, value)
-	return indexEntry{typeInt16, len(value), b.Bytes()}
+	panic(fmt.Sprintf("Unexpected entry type: %T", value))
 }
 
 type index struct {
@@ -147,7 +152,7 @@ func (i *index) Bytes() ([]byte, error) {
 func (i *index) eigenHeader() indexEntry {
 	b := &bytes.Buffer{}
 	binary.Write(b, binary.BigEndian, []int32{int32(i.h), int32(typeBinary), -int32(0x10 * (len(i.entries) + 1)), int32(0x10)})
-	return binaryEntry(b.Bytes())
+	return entry(b.Bytes())
 }
 
 func lead(name, version, release string) []byte {

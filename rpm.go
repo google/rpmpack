@@ -40,10 +40,10 @@ type RPMMetaData struct {
 type RPMFile struct {
 	Name  string
 	Body  []byte
-	Mode  int
+	Mode  uint
 	Owner string
 	Group string
-	MTime int32
+	MTime uint32
 }
 
 // Opts is used to specify global options for all files in an rpm,
@@ -51,8 +51,8 @@ type RPMFile struct {
 type Opts struct {
 	Owner string
 	Group string
-	Mode  int
-	Mtime int
+	Mode  uint
+	Mtime uint
 }
 
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
@@ -60,15 +60,15 @@ type RPM struct {
 	RPMMetaData
 	di          *dirIndex
 	payload     *bytes.Buffer
-	payloadSize int
+	payloadSize uint
 	cpio        *cpio.Writer
 	basenames   []string
-	dirindexes  []int32
-	filesizes   []int32
-	filemodes   []int16
+	dirindexes  []uint32
+	filesizes   []uint32
+	filemodes   []uint16
 	fileowners  []string
 	filegroups  []string
-	filemtimes  []int32
+	filemtimes  []uint32
 	filedigests []string
 	closed      bool
 	gz_payload  *gzip.Writer
@@ -134,59 +134,59 @@ func (r *RPM) Write(w io.Writer) error {
 
 // Only call this after the payload and header were written.
 func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
-	sigHeader.Add(sigSize, int32Entry([]int32{int32(r.payload.Len() + len(regHeader))}))
-	sigHeader.Add(sigSHA1, stringEntry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
-	sigHeader.Add(sigSHA256, stringEntry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
-	sigHeader.Add(sigPayloadSize, int32Entry([]int32{int32(r.payloadSize)}))
+	sigHeader.Add(sigSize, entry([]int32{int32(r.payload.Len() + len(regHeader))}))
+	sigHeader.Add(sigSHA1, entry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
+	sigHeader.Add(sigSHA256, entry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
+	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
 	return nil
 }
 
 func (r *RPM) writeGenIndexes(h *index) error {
-	h.Add(tagHeaderI18NTable, stringEntry("C"))
-	h.Add(tagSize, int32Entry([]int32{int32(r.payloadSize)}))
-	h.Add(tagName, stringEntry(r.Name))
-	h.Add(tagVersion, stringEntry(r.Version))
-	h.Add(tagRelease, stringEntry(r.Release))
-	h.Add(tagPayloadFormat, stringEntry("cpio"))
-	h.Add(tagPayloadCompressor, stringEntry("gzip"))
-	h.Add(tagPayloadFlags, stringEntry("9"))
-	h.Add(tagOS, stringEntry("linux"))
-	h.Add(tagArch, stringEntry("noarch"))
-	h.Add(tagProvides, stringEntry(r.Name))
+	h.Add(tagHeaderI18NTable, entry("C"))
+	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
+	h.Add(tagName, entry(r.Name))
+	h.Add(tagVersion, entry(r.Version))
+	h.Add(tagRelease, entry(r.Release))
+	h.Add(tagPayloadFormat, entry("cpio"))
+	h.Add(tagPayloadCompressor, entry("gzip"))
+	h.Add(tagPayloadFlags, entry("9"))
+	h.Add(tagOS, entry("linux"))
+	h.Add(tagArch, entry("noarch"))
+	h.Add(tagProvides, entry(r.Name))
 	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
 func (r *RPM) writeFileIndexes(h *index) error {
-	h.Add(tagBasenames, stringArrayEntry(r.basenames))
-	h.Add(tagDirindexes, int32Entry(r.dirindexes))
-	h.Add(tagDirnames, stringArrayEntry(r.di.AllDirs()))
-	h.Add(tagFileSizes, int32Entry(r.filesizes))
-	h.Add(tagFileModes, int16Entry(r.filemodes))
-	h.Add(tagFileUserName, stringArrayEntry(r.fileowners))
-	h.Add(tagFileGroupName, stringArrayEntry(r.filegroups))
-	h.Add(tagFileMTimes, int32Entry(r.filemtimes))
-	h.Add(tagFileDigests, stringArrayEntry(r.filedigests))
+	h.Add(tagBasenames, entry(r.basenames))
+	h.Add(tagDirindexes, entry(r.dirindexes))
+	h.Add(tagDirnames, entry(r.di.AllDirs()))
+	h.Add(tagFileSizes, entry(r.filesizes))
+	h.Add(tagFileModes, entry(r.filemodes))
+	h.Add(tagFileUserName, entry(r.fileowners))
+	h.Add(tagFileGroupName, entry(r.filegroups))
+	h.Add(tagFileMTimes, entry(r.filemtimes))
+	h.Add(tagFileDigests, entry(r.filedigests))
 
 	// is inodes just a range from 1..len(dirindexes)? maybe different with symlinks or dirs..
 	inodes := make([]int32, len(r.dirindexes))
 	for ii := range inodes {
 		inodes[ii] = int32(ii + 1)
 	}
-	h.Add(tagFileINodes, int32Entry(inodes))
+	h.Add(tagFileINodes, entry(inodes))
 
 	// We only use the sha256 digest algo, tag=8
 	digestAlgo := make([]int32, len(r.dirindexes))
 	for ii := range digestAlgo {
 		digestAlgo[ii] = int32(8)
 	}
-	h.Add(tagFileDigestAlgo, int32Entry(digestAlgo))
+	h.Add(tagFileDigestAlgo, entry(digestAlgo))
 	//With regular files, it seems like we can always enable all of the veriy flags
 	verifyFlags := make([]int32, len(r.dirindexes))
 	for ii := range verifyFlags {
 		verifyFlags[ii] = int32(-1)
 	}
-	h.Add(tagFileVerifyFlags, int32Entry(verifyFlags))
+	h.Add(tagFileVerifyFlags, entry(verifyFlags))
 
 	return nil
 }
@@ -196,8 +196,8 @@ func (r *RPM) AddFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
-	r.filesizes = append(r.filesizes, int32(len(f.Body)))
-	r.filemodes = append(r.filemodes, int16(f.Mode))
+	r.filesizes = append(r.filesizes, uint32(len(f.Body)))
+	r.filemodes = append(r.filemodes, uint16(f.Mode))
 	r.fileowners = append(r.fileowners, f.Group)
 	r.filegroups = append(r.filegroups, f.Owner)
 	r.filemtimes = append(r.filemtimes, f.MTime)
@@ -221,6 +221,6 @@ func (r *RPM) writePayload(f RPMFile) error {
 	if _, err := r.cpio.Write(f.Body); err != nil {
 		return err
 	}
-	r.payloadSize += len(f.Body)
+	r.payloadSize += uint(len(f.Body))
 	return nil
 }

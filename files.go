@@ -35,7 +35,7 @@ func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
 			if err != nil {
 				return err
 			}
-			fmode = int(fs.Mode().Perm())
+			fmode = uint(fs.Mode().Perm())
 		}
 
 		b, err := ioutil.ReadFile(f)

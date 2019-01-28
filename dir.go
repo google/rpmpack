@@ -16,20 +16,20 @@ package rpmpack
 
 // dirIndex holds the index from files to directory names.
 type dirIndex struct {
-	m map[string]int32
+	m map[string]uint32
 	l []string
 }
 
 func newDirIndex() *dirIndex {
-	return &dirIndex{m: make(map[string]int32)}
+	return &dirIndex{m: make(map[string]uint32)}
 }
 
-func (d *dirIndex) Get(value string) int32 {
+func (d *dirIndex) Get(value string) uint32 {
 
 	if idx, ok := d.m[value]; ok {
 		return idx
 	}
-	newIdx := int32(len(d.l))
+	newIdx := uint32(len(d.l))
 	d.l = append(d.l, value)
 
 	d.m[value] = newIdx
