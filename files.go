@@ -28,7 +28,7 @@ func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
 
 	r, err := NewRPM(md)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create RPM structure")
 	}
 	sort.Strings(files)
 	for _, f := range files {
@@ -37,14 +37,14 @@ func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
 		if fmode == 0 {
 			fs, err := os.Stat(f)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "failed to stat file (%q) to find mode", f)
 			}
 			fmode = uint(fs.Mode().Perm())
 		}
 
 		b, err := ioutil.ReadFile(f)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to read file (%q)", f)
 		}
 		if err := r.AddFile(
 			RPMFile{
