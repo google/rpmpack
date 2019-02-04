@@ -17,7 +17,6 @@ package rpmpack
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -136,7 +135,6 @@ func (r *RPM) Write(w io.Writer) error {
 // Only call this after the payload and header were written.
 func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
 	sigHeader.Add(sigSize, entry([]int32{int32(r.payload.Len() + len(regHeader))}))
-	sigHeader.Add(sigSHA1, entry(fmt.Sprintf("%x", sha1.Sum(regHeader))))
 	sigHeader.Add(sigSHA256, entry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
 	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
 	return nil
