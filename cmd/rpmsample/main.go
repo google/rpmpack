@@ -36,6 +36,13 @@ func main() {
 	}
 	r.AddFile(
 		rpmpack.RPMFile{
+			Name:  "/var/lib/rpmpack",
+			Mode:  040755,
+			Owner: "root",
+			Group: "root",
+		})
+	r.AddFile(
+		rpmpack.RPMFile{
 			Name:  "/var/lib/rpmpack/sample.txt",
 			Body:  []byte("testsample\n"),
 			Mode:  0600,
@@ -46,7 +53,15 @@ func main() {
 		rpmpack.RPMFile{
 			Name:  "/var/lib/rpmpack/sample2.txt",
 			Body:  []byte("testsample2\n"),
-			Mode:  0600,
+			Mode:  0644,
+			Owner: "root",
+			Group: "root",
+		})
+	r.AddFile(
+		rpmpack.RPMFile{
+			Name:  "/var/lib/rpmpack/sample3_link.txt",
+			Body:  []byte("/var/lib/rpmpack/sample.txt"),
+			Mode:  0120777,
 			Owner: "root",
 			Group: "root",
 		})

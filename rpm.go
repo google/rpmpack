@@ -71,6 +71,7 @@ type RPM struct {
 	filegroups  []string
 	filemtimes  []uint32
 	filedigests []string
+	filelinktos []string
 	closed      bool
 	gz_payload  *gzip.Writer
 	lastName    string
@@ -169,8 +170,9 @@ func (r *RPM) writeFileIndexes(h *index) error {
 	h.Add(tagFileGroupName, entry(r.filegroups))
 	h.Add(tagFileMTimes, entry(r.filemtimes))
 	h.Add(tagFileDigests, entry(r.filedigests))
+	h.Add(tagFileLinkTos, entry(r.filelinktos))
 
-	// is inodes just a range from 1..len(dirindexes)? maybe different with symlinks or dirs..
+	// is inodes just a range from 1..len(dirindexes)? maybe different with hard links
 	inodes := make([]int32, len(r.dirindexes))
 	for ii := range inodes {
 		inodes[ii] = int32(ii + 1)
@@ -183,7 +185,7 @@ func (r *RPM) writeFileIndexes(h *index) error {
 		digestAlgo[ii] = int32(8)
 	}
 	h.Add(tagFileDigestAlgo, entry(digestAlgo))
-	//With regular files, it seems like we can always enable all of the veriy flags
+	// With regular files, it seems like we can always enable all of the verify flags
 	verifyFlags := make([]int32, len(r.dirindexes))
 	for ii := range verifyFlags {
 		verifyFlags[ii] = int32(-1)
@@ -204,12 +206,25 @@ func (r *RPM) AddFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
-	r.filesizes = append(r.filesizes, uint32(len(f.Body)))
-	r.filemodes = append(r.filemodes, uint16(f.Mode))
 	r.fileowners = append(r.fileowners, f.Group)
 	r.filegroups = append(r.filegroups, f.Owner)
 	r.filemtimes = append(r.filemtimes, f.MTime)
-	r.filedigests = append(r.filedigests, fmt.Sprintf("%x", sha256.Sum256(f.Body)))
+	switch {
+	case f.Mode&040000 != 0: // directory
+		r.filesizes = append(r.filesizes, 4096)
+		r.filedigests = append(r.filedigests, "")
+		r.filelinktos = append(r.filelinktos, "")
+	case f.Mode&0120000 != 0: //  symlink
+		r.filesizes = append(r.filesizes, uint32(len(f.Body)))
+		r.filedigests = append(r.filedigests, "")
+		r.filelinktos = append(r.filelinktos, string(f.Body))
+	default: // regular file
+		f.Mode = f.Mode | 0100000
+		r.filesizes = append(r.filesizes, uint32(len(f.Body)))
+		r.filedigests = append(r.filedigests, fmt.Sprintf("%x", sha256.Sum256(f.Body)))
+		r.filelinktos = append(r.filelinktos, "")
+	}
+	r.filemodes = append(r.filemodes, uint16(f.Mode))
 	r.writePayload(f)
 	return nil
 }

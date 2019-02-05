@@ -33,6 +33,7 @@ const (
 	tagFileModes         = 0x0406 // 1030
 	tagFileMTimes        = 0x040a // 1034
 	tagFileDigests       = 0x040b // 1035
+	tagFileLinkTos       = 0x040c // 1036
 	tagFileUserName      = 0x040f // 1039
 	tagFileGroupName     = 0x0410 // 1040
 	tagFileVerifyFlags   = 0x0415 // 1045
