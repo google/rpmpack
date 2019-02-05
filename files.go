@@ -24,6 +24,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// FromFiles reads files from the filesystem and creates an rpm. The paths
+// are relative to the current working directory.
 func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
 
 	r, err := NewRPM(md)

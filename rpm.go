@@ -30,17 +30,20 @@ import (
 )
 
 var (
+	// ErrWriteAfterClose is returned when a user calls Write() on a closed rpm.
 	ErrWriteAfterClose = errors.New("rpm write after close")
 	// ErrWrongFileOrder is returned when files are not sorted by name.
 	ErrWrongFileOrder = errors.New("wrong file addition order")
 )
 
+// RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
 	Name    string
 	Version string
 	Release string
 }
 
+// RPMFile contains meta info about a particular file.
 type RPMFile struct {
 	Name  string
 	Body  []byte
@@ -76,11 +79,11 @@ type RPM struct {
 	filedigests []string
 	filelinktos []string
 	closed      bool
-	gz_payload  *gzip.Writer
+	gzPayload   *gzip.Writer
 	lastName    string
 }
 
-// Create and return a new RPM struct.
+// NewRPM creates and returns a new RPM struct.
 func NewRPM(m RPMMetaData) (*RPM, error) {
 	p := &bytes.Buffer{}
 	z, err := gzip.NewWriterLevel(p, 9)
@@ -91,7 +94,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		RPMMetaData: m,
 		di:          newDirIndex(),
 		payload:     p,
-		gz_payload:  z,
+		gzPayload:   z,
 		cpio:        cpio.NewWriter(z),
 	}, nil
 }
@@ -104,7 +107,7 @@ func (r *RPM) Write(w io.Writer) error {
 	if err := r.cpio.Close(); err != nil {
 		return errors.Wrap(err, "failed to close cpio payload")
 	}
-	if err := r.gz_payload.Close(); err != nil {
+	if err := r.gzPayload.Close(); err != nil {
 		return errors.Wrap(err, "failed to close gzip payload")
 	}
 
