@@ -27,7 +27,7 @@ need is to deploy plain files.
  - May easily wreak havoc on rpm based systems. It is surprisingly easy to cause
    rpm to segfault on corrupt rpm files.
  - Many features are missing.
- - All of the artifactes are stored in memory, sometimes more then once.
+ - All of the artifactes are stored in memory, sometimes more than once.
  - Less backwards compatible than `rpmbuild`.
 
 ## Philosophy

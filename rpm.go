@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package rpmpack packs files to rpm files.
+// It is designed to be simple to use and deploy, not requiring any filesystem access
+// to create rpm files.
 package rpmpack
 
 import (
