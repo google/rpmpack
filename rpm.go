@@ -156,6 +156,9 @@ func (r *RPM) writeGenIndexes(h *index) error {
 	h.Add(tagProvides, entry([]string{r.Name}))
 	h.Add(tagProvideVersion, entry([]string{r.Version + "-" + r.Release}))
 	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
+	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
+	// it is NOT a source rpm).
+	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s-%s.src.rpm", r.Name, r.Version, r.Release)))
 	return nil
 }
 

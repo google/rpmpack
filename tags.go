@@ -36,6 +36,7 @@ const (
 	tagFileLinkTos       = 0x040c // 1036
 	tagFileUserName      = 0x040f // 1039
 	tagFileGroupName     = 0x0410 // 1040
+	tagSourceRPM         = 0x0414 // 1044
 	tagFileVerifyFlags   = 0x0415 // 1045
 	tagProvides          = 0x0417 // 1047
 	tagFileINodes        = 0x0448 // 1096
