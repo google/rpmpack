@@ -111,7 +111,7 @@ func pad(w io.Writer, rpmtype, offset int) {
 	}
 }
 
-// Write finalizes the index and returns the bytes.
+// Bytes returns the bytes of the index.
 func (i *index) Bytes() ([]byte, error) {
 	w := &bytes.Buffer{}
 	// Even the header has three parts: The lead, the index entries, and the entries.
