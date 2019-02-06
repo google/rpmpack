@@ -56,10 +56,11 @@ type RPMFile struct {
 // Opts is used to specify global options for all files in an rpm,
 // to be used in functions that accept a list of file names.
 type Opts struct {
-	Owner string
-	Group string
-	Mode  uint
-	Mtime uint
+	Owner    string
+	Group    string
+	FileMode uint
+	DirMode  uint
+	Mtime    uint
 }
 
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.

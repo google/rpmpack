@@ -15,7 +15,6 @@
 package rpmpack
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -24,41 +23,60 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FromFiles reads files from the filesystem and creates an rpm. The paths
-// are relative to the current working directory.
-func FromFiles(w io.Writer, files []string, md RPMMetaData, opts Opts) error {
+// FromFiles reads files from the filesystem and given filenames,
+// and creates an rpm. The paths are relative to the current working directory.
+func FromFiles(files []string, md RPMMetaData, opts Opts) (*RPM, error) {
 
 	r, err := NewRPM(md)
 	if err != nil {
-		return errors.Wrap(err, "failed to create RPM structure")
+		return nil, errors.Wrap(err, "failed to create RPM structure")
 	}
 	sort.Strings(files)
 	for _, f := range files {
-		fmode := opts.Mode
-		// Deduce mode from file
-		if fmode == 0 {
-			fs, err := os.Stat(f)
-			if err != nil {
-				return errors.Wrapf(err, "failed to stat file (%q) to find mode", f)
+		fs, err := os.Lstat(f)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to stat file (%q)", f)
+		}
+		var mode uint
+		var body []byte
+		switch {
+		case fs.Mode().IsDir():
+			mode = 040000
+			if opts.DirMode != 0 {
+				mode |= opts.DirMode
+			} else {
+				mode |= uint(fs.Mode().Perm())
 			}
-			fmode = uint(fs.Mode().Perm())
+		case fs.Mode()&os.ModeSymlink != 0:
+			mode = 0120777
+			s, err := os.Readlink(f)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to read link (%q)", f)
+			}
+			body = []byte(s)
+		default:
+			if opts.FileMode != 0 {
+				mode |= opts.FileMode
+			} else {
+				mode |= uint(fs.Mode().Perm())
+			}
+			b, err := ioutil.ReadFile(f)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to read file (%q)", f)
+			}
+			body = b
 		}
 
-		b, err := ioutil.ReadFile(f)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read file (%q)", f)
-		}
 		if err := r.AddFile(
 			RPMFile{
 				Name:  path.Join("/", f),
-				Body:  b,
-				Mode:  fmode,
+				Body:  body,
+				Mode:  mode,
 				Owner: opts.Owner,
 				Group: opts.Group,
 			}); err != nil {
-			return errors.Wrapf(err, "failed to add file (%q)", f)
+			return nil, errors.Wrapf(err, "failed to add file (%q)", f)
 		}
-
 	}
-	return r.Write(w)
+	return r, nil
 }

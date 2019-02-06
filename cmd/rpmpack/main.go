@@ -30,10 +30,11 @@ var (
 
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
 
-	owner = flag.String("owner", "root", "use `NAME` as owner")
-	group = flag.String("group", "root", "use `NAME` as group")
-	mode  = flag.String("mode", "0644", "octal mode of files. Setting to 0 will read the permission bits from the files.")
-	mtime = flag.Uint("mtime", 0, "change timestamp of files")
+	owner    = flag.String("owner", "root", "use `NAME` as owner")
+	group    = flag.String("group", "root", "use `NAME` as group")
+	filemode = flag.String("filemode", "0644", "octal mode of files. Setting to 0 will read the permission bits from the files.")
+	dirmode  = flag.String("dirmode", "0755", "octal mode of dirs. Setting to 0 will read the permission bits from the dirs.")
+	mtime    = flag.Uint("mtime", 0, "change timestamp of files")
 )
 
 func usage() {
@@ -52,16 +53,8 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
-	var m uint
-	if *mode != "" {
-		m64, err := strconv.ParseInt(*mode, 8, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse mode %s as octal", *mode)
-			flag.Usage()
-			os.Exit(2)
-		}
-		m = uint(m64)
-	}
+	fmode := parseOctFlag(*filemode)
+	dmode := parseOctFlag(*dirmode)
 
 	w := os.Stdout
 	if *outputfile != "" {
@@ -72,8 +65,7 @@ func main() {
 		defer f.Close()
 		w = f
 	}
-	if err := rpmpack.FromFiles(
-		w,
+	r, err := rpmpack.FromFiles(
 		flag.Args(),
 		rpmpack.RPMMetaData{
 			Name:    *name,
@@ -81,13 +73,32 @@ func main() {
 			Release: *release,
 		},
 		rpmpack.Opts{
-			Owner: *owner,
-			Group: *group,
-			Mode:  m,
-			Mtime: *mtime,
-		}); err != nil {
+			Owner:    *owner,
+			Group:    *group,
+			FileMode: fmode,
+			DirMode:  dmode,
+			Mtime:    *mtime,
+		})
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "rpmpack error: %v\n", err)
 		os.Exit(1)
 	}
+	if err := r.Write(w); err != nil {
+		fmt.Fprintf(os.Stderr, "rpm write error: %v\n", err)
+		os.Exit(1)
+	}
 
+}
+func parseOctFlag(v string) uint {
+	var m uint
+	if v != "" {
+		m64, err := strconv.ParseInt(v, 8, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse mode %s as octal", v)
+			flag.Usage()
+			os.Exit(2)
+		}
+		m = uint(m64)
+	}
+	return m
 }
