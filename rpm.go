@@ -218,11 +218,13 @@ func (r *RPM) AddFile(f RPMFile) error {
 	r.fileowners = append(r.fileowners, f.Group)
 	r.filegroups = append(r.filegroups, f.Owner)
 	r.filemtimes = append(r.filemtimes, f.MTime)
+	links := 1
 	switch {
 	case f.Mode&040000 != 0: // directory
 		r.filesizes = append(r.filesizes, 4096)
 		r.filedigests = append(r.filedigests, "")
 		r.filelinktos = append(r.filelinktos, "")
+		links = 2
 	case f.Mode&0120000 != 0: //  symlink
 		r.filesizes = append(r.filesizes, uint32(len(f.Body)))
 		r.filedigests = append(r.filedigests, "")
@@ -234,18 +236,16 @@ func (r *RPM) AddFile(f RPMFile) error {
 		r.filelinktos = append(r.filelinktos, "")
 	}
 	r.filemodes = append(r.filemodes, uint16(f.Mode))
-	r.writePayload(f)
+	r.writePayload(f, links)
 	return nil
 }
 
-func (r *RPM) writePayload(f RPMFile) error {
-	chash := cpio.NewHash()
-	chash.Write(f.Body)
+func (r *RPM) writePayload(f RPMFile, links int) error {
 	hdr := &cpio.Header{
-		Name:     f.Name,
-		Mode:     cpio.FileMode(f.Mode),
-		Size:     int64(len(f.Body)),
-		Checksum: cpio.Checksum(chash.Sum32()),
+		Name:  f.Name,
+		Mode:  cpio.FileMode(f.Mode),
+		Size:  int64(len(f.Body)),
+		Links: links,
 	}
 	if err := r.cpio.WriteHeader(hdr); err != nil {
 		return errors.Wrap(err, "failed to write payload file header")
