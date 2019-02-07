@@ -17,8 +17,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
-	"strconv"
 
 	"github.com/google/rpmpack"
 )
@@ -29,18 +30,12 @@ var (
 	release = flag.String("release", "0", "the rpm release")
 
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
-
-	owner    = flag.String("owner", "root", "use `NAME` as owner")
-	group    = flag.String("group", "root", "use `NAME` as group")
-	filemode = flag.String("filemode", "0644", "octal mode of files. Setting to 0 will read the permission bits from the files.")
-	dirmode  = flag.String("dirmode", "0755", "octal mode of dirs. Setting to 0 will read the permission bits from the dirs.")
-	mtime    = flag.Uint("mtime", 0, "change timestamp of files")
 )
 
 func usage() {
 	fmt.Fprintf(os.Stderr,
 		`Usage:
-  %s [OPTION] [FILE]...
+  %s [OPTION] [FILE]
 Options:
 `, os.Args[0])
 	flag.PrintDefaults()
@@ -49,38 +44,42 @@ Options:
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-	if flag.NArg() == 0 {
+	var i io.Reader
+	switch flag.NArg() {
+	case 0:
+		fmt.Fprintln(os.Stderr, "reading tar content from stdin.")
+		i = os.Stdin
+	case 1:
+		f, err := os.Open(flag.Arg(0))
+		if err != nil {
+			log.Fatalf("Failed to open file %s for reading\n", flag.Arg(0))
+		}
+		i = f
+
+	default:
+		fmt.Fprintln(os.Stderr, "expecting 0 or 1 positional arguments")
 		flag.Usage()
 		os.Exit(2)
 	}
-	fmode := parseOctFlag(*filemode)
-	dmode := parseOctFlag(*dirmode)
 
 	w := os.Stdout
 	if *outputfile != "" {
 		f, err := os.Create(*outputfile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to open file %s for writing", *outputfile)
+			log.Fatalf("Failed to open file %s for writing", *outputfile)
 		}
 		defer f.Close()
 		w = f
 	}
-	r, err := rpmpack.FromFiles(
-		flag.Args(),
+	r, err := rpmpack.FromTar(
+		i,
 		rpmpack.RPMMetaData{
 			Name:    *name,
 			Version: *version,
 			Release: *release,
-		},
-		rpmpack.Opts{
-			Owner:    *owner,
-			Group:    *group,
-			FileMode: fmode,
-			DirMode:  dmode,
-			Mtime:    *mtime,
 		})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "rpmpack error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)
 		os.Exit(1)
 	}
 	if err := r.Write(w); err != nil {
@@ -88,17 +87,4 @@ func main() {
 		os.Exit(1)
 	}
 
-}
-func parseOctFlag(v string) uint {
-	var m uint
-	if v != "" {
-		m64, err := strconv.ParseInt(v, 8, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse mode %s as octal", v)
-			flag.Usage()
-			os.Exit(2)
-		}
-		m = uint(m64)
-	}
-	return m
 }
