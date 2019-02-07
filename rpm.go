@@ -172,25 +172,29 @@ func (r *RPM) writeFileIndexes(h *index) error {
 	h.Add(tagFileDigests, entry(r.filedigests))
 	h.Add(tagFileLinkTos, entry(r.filelinktos))
 
-	// is inodes just a range from 1..len(dirindexes)? maybe different with hard links
 	inodes := make([]int32, len(r.dirindexes))
+	digestAlgo := make([]int32, len(r.dirindexes))
+	verifyFlags := make([]int32, len(r.dirindexes))
+	fileFlags := make([]int32, len(r.dirindexes))
+	fileRDevs := make([]int16, len(r.dirindexes))
+	fileLangs := make([]string, len(r.dirindexes))
+
 	for ii := range inodes {
+		// is inodes just a range from 1..len(dirindexes)? maybe different with hard links
 		inodes[ii] = int32(ii + 1)
+		// We only use the sha256 digest algo, tag=8
+		digestAlgo[ii] = int32(8)
+		// With regular files, it seems like we can always enable all of the verify flags
+		verifyFlags[ii] = int32(-1)
+		fileFlags[ii] = int32(0)
+		fileRDevs[ii] = int16(1)
 	}
 	h.Add(tagFileINodes, entry(inodes))
-
-	// We only use the sha256 digest algo, tag=8
-	digestAlgo := make([]int32, len(r.dirindexes))
-	for ii := range digestAlgo {
-		digestAlgo[ii] = int32(8)
-	}
 	h.Add(tagFileDigestAlgo, entry(digestAlgo))
-	// With regular files, it seems like we can always enable all of the verify flags
-	verifyFlags := make([]int32, len(r.dirindexes))
-	for ii := range verifyFlags {
-		verifyFlags[ii] = int32(-1)
-	}
 	h.Add(tagFileVerifyFlags, entry(verifyFlags))
+	h.Add(tagFileFlags, entry(fileFlags))
+	h.Add(tagFileRDevs, entry(fileRDevs))
+	h.Add(tagFileLangs, entry(fileLangs))
 
 	return nil
 }
