@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"sort"
 
 	cpio "github.com/cavaliercoder/go-cpio"
 	"github.com/pkg/errors"
@@ -43,7 +44,7 @@ type RPMMetaData struct {
 	Release string
 }
 
-// RPMFile contains meta info about a particular file.
+// RPMFile contains a particular file's entry and data.
 type RPMFile struct {
 	Name  string
 	Body  []byte
@@ -71,7 +72,7 @@ type RPM struct {
 	filelinktos []string
 	closed      bool
 	gzPayload   *gzip.Writer
-	lastName    string
+	files       map[string]RPMFile
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -87,6 +88,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		payload:     p,
 		gzPayload:   z,
 		cpio:        cpio.NewWriter(z),
+		files:       make(map[string]RPMFile),
 	}, nil
 }
 
@@ -94,6 +96,17 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 func (r *RPM) Write(w io.Writer) error {
 	if r.closed {
 		return ErrWriteAfterClose
+	}
+	// Add all of the files, sorted alphabetically.
+	fnames := []string{}
+	for fn := range r.files {
+		fnames = append(fnames, fn)
+	}
+	sort.Strings(fnames)
+	for _, fn := range fnames {
+		if err := r.writeFile(r.files[fn]); err != nil {
+			return errors.Wrapf(err, "failed to write file %q", fn)
+		}
 	}
 	if err := r.cpio.Close(); err != nil {
 		return errors.Wrap(err, "failed to close cpio payload")
@@ -200,13 +213,13 @@ func (r *RPM) writeFileIndexes(h *index) error {
 }
 
 // AddFile adds an RPMFile to an existing rpm.
-// WARNING: The files must be sorted by name in ascending order,
-// as required by rpm.
 func (r *RPM) AddFile(f RPMFile) error {
-	if f.Name <= r.lastName {
-		return errors.Wrapf(ErrWrongFileOrder, "file %q after file %q", f.Name, r.lastName)
-	}
-	r.lastName = f.Name
+	r.files[f.Name] = f
+	return nil
+}
+
+// writeFile writes the file to the indexes and cpio.
+func (r *RPM) writeFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
