@@ -214,6 +214,9 @@ func (r *RPM) writeFileIndexes(h *index) error {
 
 // AddFile adds an RPMFile to an existing rpm.
 func (r *RPM) AddFile(f RPMFile) error {
+	if f.Name == "/" { // rpm does not allow the root dir to be included.
+		return nil
+	}
 	r.files[f.Name] = f
 	return nil
 }

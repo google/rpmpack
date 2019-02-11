@@ -3,7 +3,9 @@
 # this is currently added to assist in external testing.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 load("@bazel_gazelle//:def.bzl", "gazelle")
+load("//:def.bzl", "pkg_tar2rpm")
 
 # gazelle:prefix github.com/google/rpmpack
 gazelle(name = "gazelle")
@@ -32,6 +34,23 @@ go_test(
         "header_test.go",
         "tar_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = ["@com_github_google_go_cmp//cmp:go_default_library"],
+)
+
+pkg_tar(
+    name = "rpmtest-tar",
+    srcs = ["//:testdata/content1.txt"],
+    package_dir = "var/lib/rpmpack",
+    mode = "0644",
+    ownername = "root.root",
+)
+
+pkg_tar2rpm(
+    name = "rpmtest",
+    data = ":rpmtest-tar",
+    pkg_name = "rpmtest",
+    release = "3.4",
+    version = "1.2",
 )
