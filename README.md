@@ -1,4 +1,4 @@
-# rpmpack - package rpms the easy way
+# rpmpack (tar2rpm) - package rpms the easy way
 
 ## Disclaimer
 
@@ -7,8 +7,7 @@ by Google.
 
 ## Overview
 
-rpmpack is a tool and golang library to create rpm package files, when all you
-need is to deploy plain files.
+tar2rpm is a tool that takes a tar and outputs an rpm. rpmpack is a golang library to create rpms. Both are written in pure go, without using rpmbuild or spec files.
 
 ## Features
 
