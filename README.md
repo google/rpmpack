@@ -7,7 +7,33 @@ by Google.
 
 ## Overview
 
-tar2rpm is a tool that takes a tar and outputs an rpm. rpmpack is a golang library to create rpms. Both are written in pure go, without using rpmbuild or spec files.
+`tar2rpm` is a tool that takes a tar and outputs an rpm. `rpmpack` is a golang library to create rpms. Both are written in pure go, without using rpmbuild or spec files. API documentation for `rpmpack` can be found in [![GoDoc](https://godoc.org/github.com/google/rpmpack?status.svg)](https://godoc.org/github.com/google/rpmpack).
+
+## Installation
+
+```bash
+$ go get -u github.com/google/rpmpack/...
+```
+
+This will make the `tar2rpm` tool available in `${GOPATH}/bin`, which by default means `~/go/bin`.
+
+## Usage
+
+`tar2rpm` takes a `tar` file (from `stdin` or a specified filename), and outputs an `rpm`.
+
+```
+Usage:
+  tar2rpm [OPTION] [FILE]
+Options:
+  -file FILE
+        write rpm to FILE instead of stdout
+  -name string
+        the package name
+  -release string
+        the rpm release
+  -version string
+        the package version
+```
 
 ## Features
 
