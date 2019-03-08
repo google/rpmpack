@@ -65,6 +65,8 @@ func main() {
 			Owner: "root",
 			Group: "root",
 		})
-	r.Write(os.Stdout)
+	if err := r.Write(os.Stdout); err != nil {
+		log.Fatalf("write failed: %v", err)
+	}
 
 }

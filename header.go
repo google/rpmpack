@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -49,13 +48,21 @@ type indexEntry struct {
 
 func (e indexEntry) indexBytes(tag, contentOffset int) []byte {
 	b := &bytes.Buffer{}
-	binary.Write(b, binary.BigEndian, []int32{int32(tag), int32(e.rpmtype), int32(contentOffset), int32(e.count)})
+	if err := binary.Write(b, binary.BigEndian, []int32{int32(tag), int32(e.rpmtype), int32(contentOffset), int32(e.count)}); err != nil {
+		// binary.Write can fail if the underlying Write fails, or the types are invalid.
+		// bytes.Buffer's write never error out, it can only panic with OOM.
+		panic(err)
+	}
 	return b.Bytes()
 }
 
 func intEntry(rpmtype, size int, value interface{}) indexEntry {
 	b := &bytes.Buffer{}
-	binary.Write(b, binary.BigEndian, value)
+	if err := binary.Write(b, binary.BigEndian, value); err != nil {
+		// binary.Write can fail if the underlying Write fails, or the types are invalid.
+		// bytes.Buffer's write never error out, it can only panic with OOM.
+		panic(err)
+	}
 	return indexEntry{rpmtype, size, b.Bytes()}
 }
 
@@ -86,7 +93,6 @@ func entry(value interface{}) indexEntry {
 
 type index struct {
 	entries map[int]indexEntry
-	size    int
 	h       int
 }
 
@@ -104,10 +110,15 @@ func (i *index) sortedTags() []int {
 	sort.Ints(t)
 	return t
 }
-func pad(w io.Writer, rpmtype, offset int) {
+
+func pad(w *bytes.Buffer, rpmtype, offset int) {
 	// We need to align integer entries...
 	if b, ok := boundaries[rpmtype]; ok && offset%b != 0 {
-		w.Write(make([]byte, b-offset%b))
+		if _, err := w.Write(make([]byte, b-offset%b)); err != nil {
+			// binary.Write can fail if the underlying Write fails, or the types are invalid.
+			// bytes.Buffer's write never error out, it can only panic with OOM.
+			panic(err)
+		}
 	}
 }
 
@@ -153,7 +164,12 @@ func (i *index) Bytes() ([]byte, error) {
 // I kid you not.
 func (i *index) eigenHeader() indexEntry {
 	b := &bytes.Buffer{}
-	binary.Write(b, binary.BigEndian, []int32{int32(i.h), int32(typeBinary), -int32(0x10 * (len(i.entries) + 1)), int32(0x10)})
+	if err := binary.Write(b, binary.BigEndian, []int32{int32(i.h), int32(typeBinary), -int32(0x10 * (len(i.entries) + 1)), int32(0x10)}); err != nil {
+		// binary.Write can fail if the underlying Write fails, or the types are invalid.
+		// bytes.Buffer's write never error out, it can only panic with OOM.
+		panic(err)
+	}
+
 	return entry(b.Bytes())
 }
 

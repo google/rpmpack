@@ -18,7 +18,6 @@ package rpmpack
 const (
 	tagHeaderI18NTable = 0x64 // 100
 	// Signature tags are obiously overlapping regular header tags..
-	sigSHA1        = 0x010d // 269
 	sigSHA256      = 0x0111 // 273
 	sigSize        = 0x03e8 // 1000
 	sigPayloadSize = 0x03ef // 1007
@@ -43,7 +42,6 @@ const (
 	tagProvides          = 0x0417 // 1047
 	tagFileINodes        = 0x0448 // 1096
 	tagFileLangs         = 0x0449 // 1097
-	tagPrefixes          = 0x044a // 1098
 	tagProvideFlags      = 0x0458 // 1112
 	tagProvideVersion    = 0x0459 // 1113
 	tagDirindexes        = 0x045c // 1116
