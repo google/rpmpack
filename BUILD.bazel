@@ -2,6 +2,7 @@
 # For running basic build/run/test you can also use the regular go tools,
 # this is currently added to assist in external testing.
 
+load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 load("@bazel_gazelle//:def.bzl", "gazelle")
@@ -42,9 +43,9 @@ go_test(
 pkg_tar(
     name = "rpmtest-tar",
     srcs = ["//:testdata/content1.txt"],
-    package_dir = "var/lib/rpmpack",
     mode = "0644",
     ownername = "root.root",
+    package_dir = "var/lib/rpmpack",
 )
 
 pkg_tar2rpm(
@@ -53,4 +54,38 @@ pkg_tar2rpm(
     pkg_name = "rpmtest",
     release = "3.4",
     version = "1.2",
+)
+
+container_image(
+    name = "centos_with_rpm",
+    testonly = True,
+    base = "@centos//image",
+    directory = "/root/",
+    files = [":rpmtest.rpm"],
+    legacy_run_behavior = False,
+)
+
+container_image(
+    name = "centos_V",
+    testonly = True,
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -Vv rpmtest",
+)
+
+container_image(
+    name = "centos_ls",
+    testonly = True,
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && ls -l /var/lib/rpmpack",
+)
+
+sh_test(
+    name = "docker_tests",
+    srcs = ["docker_tests.sh"],
+    data = [
+        ":centos_V",
+        ":centos_ls",
+        ":testdata/golden_V.txt",
+        ":testdata/golden_ls.txt",
+    ],
 )
