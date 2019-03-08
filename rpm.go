@@ -134,24 +134,29 @@ func (r *RPM) Write(w io.Writer) error {
 		return errors.Wrap(err, "failed to retrieve signatures header")
 	}
 
-	w.Write(sb)
+	if _, err := w.Write(sb); err != nil {
+		return errors.Wrap(err, "failed to write signature bytes")
+	}
 	//Signatures are padded to 8-byte boundaries
-	w.Write(make([]byte, (8-len(sb)%8)%8))
-	w.Write(hb)
+	if _, err := w.Write(make([]byte, (8-len(sb)%8)%8)); err != nil {
+		return errors.Wrap(err, "failed to write signature padding")
+	}
+	if _, err := w.Write(hb); err != nil {
+		return errors.Wrap(err, "failed to write header body")
+	}
 	_, err = w.Write(r.payload.Bytes())
 	return errors.Wrap(err, "failed to write payload")
 
 }
 
 // Only call this after the payload and header were written.
-func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
+func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
 	sigHeader.Add(sigSize, entry([]int32{int32(r.payload.Len() + len(regHeader))}))
 	sigHeader.Add(sigSHA256, entry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
 	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
-	return nil
 }
 
-func (r *RPM) writeGenIndexes(h *index) error {
+func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
@@ -169,11 +174,10 @@ func (r *RPM) writeGenIndexes(h *index) error {
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s-%s.src.rpm", r.Name, r.Version, r.Release)))
-	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
-func (r *RPM) writeFileIndexes(h *index) error {
+func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagBasenames, entry(r.basenames))
 	h.Add(tagDirindexes, entry(r.dirindexes))
 	h.Add(tagDirnames, entry(r.di.AllDirs()))
@@ -208,17 +212,14 @@ func (r *RPM) writeFileIndexes(h *index) error {
 	h.Add(tagFileFlags, entry(fileFlags))
 	h.Add(tagFileRDevs, entry(fileRDevs))
 	h.Add(tagFileLangs, entry(fileLangs))
-
-	return nil
 }
 
 // AddFile adds an RPMFile to an existing rpm.
-func (r *RPM) AddFile(f RPMFile) error {
+func (r *RPM) AddFile(f RPMFile) {
 	if f.Name == "/" { // rpm does not allow the root dir to be included.
-		return nil
+		return
 	}
 	r.files[f.Name] = f
-	return nil
 }
 
 // writeFile writes the file to the indexes and cpio.
@@ -247,8 +248,7 @@ func (r *RPM) writeFile(f RPMFile) error {
 		r.filelinktos = append(r.filelinktos, "")
 	}
 	r.filemodes = append(r.filemodes, uint16(f.Mode))
-	r.writePayload(f, links)
-	return nil
+	return r.writePayload(f, links)
 }
 
 func (r *RPM) writePayload(f RPMFile, links int) error {
