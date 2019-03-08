@@ -42,6 +42,7 @@ type RPMMetaData struct {
 	Name    string
 	Version string
 	Release string
+	Arch    string
 }
 
 // RPMFile contains a particular file's entry and data.
@@ -161,7 +162,7 @@ func (r *RPM) writeGenIndexes(h *index) error {
 	h.Add(tagPayloadCompressor, entry("gzip"))
 	h.Add(tagPayloadFlags, entry("9"))
 	h.Add(tagOS, entry("linux"))
-	h.Add(tagArch, entry("noarch"))
+	h.Add(tagArch, entry(r.Arch))
 	// A package must provide itself...
 	h.Add(tagProvides, entry([]string{r.Name}))
 	h.Add(tagProvideVersion, entry([]string{r.Version + "-" + r.Release}))

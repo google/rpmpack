@@ -28,6 +28,7 @@ var (
 	name    = flag.String("name", "", "the package name")
 	version = flag.String("version", "", "the package version")
 	release = flag.String("release", "", "the rpm release")
+	arch    = flag.String("arch", "noarch", "the rpm architecture")
 
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
 )
@@ -83,6 +84,7 @@ func main() {
 			Name:    *name,
 			Version: *version,
 			Release: *release,
+			Arch:    *arch,
 		})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)

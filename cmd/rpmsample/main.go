@@ -30,6 +30,7 @@ func main() {
 		Name:    "rpmsample",
 		Version: "0.1",
 		Release: "A",
+		Arch:    "noarch",
 	})
 	if err != nil {
 		log.Fatal(err)
