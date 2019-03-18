@@ -57,7 +57,7 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 		}
 		mtime := uint32(h.ModTime.Unix())
 
-		if err := r.AddFile(
+		r.AddFile(
 			RPMFile{
 				Name:  path.Join("/", h.Name),
 				Body:  body,
@@ -65,8 +65,6 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 				Owner: h.Uname,
 				Group: h.Gname,
 				MTime: mtime,
-			}); err != nil {
-			return nil, errors.Wrapf(err, "failed to add file (%q)", h.Name)
-		}
+			})
 	}
 }

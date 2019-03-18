@@ -30,6 +30,7 @@ func main() {
 		Name:    "rpmsample",
 		Version: "0.1",
 		Release: "A",
+		Arch:    "noarch",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -65,6 +66,8 @@ func main() {
 			Owner: "root",
 			Group: "root",
 		})
-	r.Write(os.Stdout)
+	if err := r.Write(os.Stdout); err != nil {
+		log.Fatalf("write failed: %v", err)
+	}
 
 }

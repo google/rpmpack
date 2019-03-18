@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -84,6 +85,9 @@ func TestFromTar(t *testing.T) {
 			r, err := FromTar(tc.input, RPMMetaData{})
 			if err != nil {
 				t.Errorf("FromTar returned err: %v", err)
+			}
+			if err := r.Write(ioutil.Discard); err != nil {
+				t.Errorf("r.Write() returned err: %v", err)
 			}
 			if r == nil {
 				t.Fatalf("FromTar returned nil pointer")

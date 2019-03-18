@@ -25,9 +25,10 @@ import (
 )
 
 var (
-	name    = flag.String("name", "rpmsample", "the package name")
-	version = flag.String("version", "0", "the package version")
-	release = flag.String("release", "0", "the rpm release")
+	name    = flag.String("name", "", "the package name")
+	version = flag.String("version", "", "the package version")
+	release = flag.String("release", "", "the rpm release")
+	arch    = flag.String("arch", "noarch", "the rpm architecture")
 
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
 )
@@ -44,6 +45,12 @@ Options:
 func main() {
 	flag.Usage = usage
 	flag.Parse()
+	if *name == "" || *version == "" || *release == "" {
+		fmt.Fprintln(os.Stderr, "name, version, and release are all required")
+		flag.Usage()
+		os.Exit(2)
+	}
+
 	var i io.Reader
 	switch flag.NArg() {
 	case 0:
@@ -77,6 +84,7 @@ func main() {
 			Name:    *name,
 			Version: *version,
 			Release: *release,
+			Arch:    *arch,
 		})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)

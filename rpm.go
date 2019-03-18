@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"sort"
 
 	cpio "github.com/cavaliercoder/go-cpio"
 	"github.com/pkg/errors"
@@ -41,9 +42,10 @@ type RPMMetaData struct {
 	Name    string
 	Version string
 	Release string
+	Arch    string
 }
 
-// RPMFile contains meta info about a particular file.
+// RPMFile contains a particular file's entry and data.
 type RPMFile struct {
 	Name  string
 	Body  []byte
@@ -71,7 +73,7 @@ type RPM struct {
 	filelinktos []string
 	closed      bool
 	gzPayload   *gzip.Writer
-	lastName    string
+	files       map[string]RPMFile
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -87,6 +89,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		payload:     p,
 		gzPayload:   z,
 		cpio:        cpio.NewWriter(z),
+		files:       make(map[string]RPMFile),
 	}, nil
 }
 
@@ -94,6 +97,17 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 func (r *RPM) Write(w io.Writer) error {
 	if r.closed {
 		return ErrWriteAfterClose
+	}
+	// Add all of the files, sorted alphabetically.
+	fnames := []string{}
+	for fn := range r.files {
+		fnames = append(fnames, fn)
+	}
+	sort.Strings(fnames)
+	for _, fn := range fnames {
+		if err := r.writeFile(r.files[fn]); err != nil {
+			return errors.Wrapf(err, "failed to write file %q", fn)
+		}
 	}
 	if err := r.cpio.Close(); err != nil {
 		return errors.Wrap(err, "failed to close cpio payload")
@@ -121,24 +135,29 @@ func (r *RPM) Write(w io.Writer) error {
 		return errors.Wrap(err, "failed to retrieve signatures header")
 	}
 
-	w.Write(sb)
+	if _, err := w.Write(sb); err != nil {
+		return errors.Wrap(err, "failed to write signature bytes")
+	}
 	//Signatures are padded to 8-byte boundaries
-	w.Write(make([]byte, (8-len(sb)%8)%8))
-	w.Write(hb)
+	if _, err := w.Write(make([]byte, (8-len(sb)%8)%8)); err != nil {
+		return errors.Wrap(err, "failed to write signature padding")
+	}
+	if _, err := w.Write(hb); err != nil {
+		return errors.Wrap(err, "failed to write header body")
+	}
 	_, err = w.Write(r.payload.Bytes())
 	return errors.Wrap(err, "failed to write payload")
 
 }
 
 // Only call this after the payload and header were written.
-func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
+func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
 	sigHeader.Add(sigSize, entry([]int32{int32(r.payload.Len() + len(regHeader))}))
 	sigHeader.Add(sigSHA256, entry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
 	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
-	return nil
 }
 
-func (r *RPM) writeGenIndexes(h *index) error {
+func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
@@ -148,7 +167,7 @@ func (r *RPM) writeGenIndexes(h *index) error {
 	h.Add(tagPayloadCompressor, entry("gzip"))
 	h.Add(tagPayloadFlags, entry("9"))
 	h.Add(tagOS, entry("linux"))
-	h.Add(tagArch, entry("noarch"))
+	h.Add(tagArch, entry(r.Arch))
 	// A package must provide itself...
 	h.Add(tagProvides, entry([]string{r.Name}))
 	h.Add(tagProvideVersion, entry([]string{r.Version + "-" + r.Release}))
@@ -156,11 +175,10 @@ func (r *RPM) writeGenIndexes(h *index) error {
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s-%s.src.rpm", r.Name, r.Version, r.Release)))
-	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
-func (r *RPM) writeFileIndexes(h *index) error {
+func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagBasenames, entry(r.basenames))
 	h.Add(tagDirindexes, entry(r.dirindexes))
 	h.Add(tagDirnames, entry(r.di.AllDirs()))
@@ -195,18 +213,18 @@ func (r *RPM) writeFileIndexes(h *index) error {
 	h.Add(tagFileFlags, entry(fileFlags))
 	h.Add(tagFileRDevs, entry(fileRDevs))
 	h.Add(tagFileLangs, entry(fileLangs))
-
-	return nil
 }
 
 // AddFile adds an RPMFile to an existing rpm.
-// WARNING: The files must be sorted by name in ascending order,
-// as required by rpm.
-func (r *RPM) AddFile(f RPMFile) error {
-	if f.Name <= r.lastName {
-		return errors.Wrapf(ErrWrongFileOrder, "file %q after file %q", f.Name, r.lastName)
+func (r *RPM) AddFile(f RPMFile) {
+	if f.Name == "/" { // rpm does not allow the root dir to be included.
+		return
 	}
-	r.lastName = f.Name
+	r.files[f.Name] = f
+}
+
+// writeFile writes the file to the indexes and cpio.
+func (r *RPM) writeFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
@@ -231,8 +249,7 @@ func (r *RPM) AddFile(f RPMFile) error {
 		r.filelinktos = append(r.filelinktos, "")
 	}
 	r.filemodes = append(r.filemodes, uint16(f.Mode))
-	r.writePayload(f, links)
-	return nil
+	return r.writePayload(f, links)
 }
 
 func (r *RPM) writePayload(f RPMFile, links int) error {
