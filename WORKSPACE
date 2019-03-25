@@ -44,19 +44,19 @@ container_repositories()
 
 go_repository(
     name = "com_github_pkg_errors",
-    commit = "ffb6e22f01932bf7ac35e0bad9be11f01d1c8685",
     importpath = "github.com/pkg/errors",
+    tag = "v0.8.1",
 )
 
 go_repository(
     name = "com_github_google_go_cmp",
-    commit = "2248b49eaa8e1c8c0963ee77b40841adbc19d4ca",
     importpath = "github.com/google/go-cmp",
+    tag = "v0.2.0",
 )
 
 go_repository(
     name = "com_github_cavaliercoder_go_cpio",
-    commit = "925f9528c45e5b74f52963bd11f1988ad99a95a5",
+    commit = "925f9528c45e",
     importpath = "github.com/cavaliercoder/go-cpio",
 )
 
