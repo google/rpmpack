@@ -74,6 +74,10 @@ type RPM struct {
 	closed      bool
 	gzPayload   *gzip.Writer
 	files       map[string]RPMFile
+	prein       string
+	postin      string
+	preun       string
+	postun      string
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -175,6 +179,22 @@ func (r *RPM) writeGenIndexes(h *index) {
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s-%s.src.rpm", r.Name, r.Version, r.Release)))
+	if r.prein != "" {
+		h.Add(tagPrein, entry(r.prein))
+		h.Add(tagPreinProg, entry("/bin/sh"))
+	}
+	if r.postin != "" {
+		h.Add(tagPostin, entry(r.postin))
+		h.Add(tagPostinProg, entry("/bin/sh"))
+	}
+	if r.preun != "" {
+		h.Add(tagPreun, entry(r.preun))
+		h.Add(tagPreunProg, entry("/bin/sh"))
+	}
+	if r.postun != "" {
+		h.Add(tagPostun, entry(r.postun))
+		h.Add(tagPostunProg, entry("/bin/sh"))
+	}
 }
 
 // WriteFileIndexes writes file related index headers to the header
@@ -213,6 +233,26 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileFlags, entry(fileFlags))
 	h.Add(tagFileRDevs, entry(fileRDevs))
 	h.Add(tagFileLangs, entry(fileLangs))
+}
+
+// AddPrein adds a prein sciptlet
+func (r *RPM) AddPrein(s string) {
+	r.prein = s
+}
+
+// AddPostin adds a postin sciptlet
+func (r *RPM) AddPostin(s string) {
+	r.postin = s
+}
+
+// AddPreun adds a preun sciptlet
+func (r *RPM) AddPreun(s string) {
+	r.preun = s
+}
+
+// AddPostun adds a postun sciptlet
+func (r *RPM) AddPostun(s string) {
+	r.postun = s
 }
 
 // AddFile adds an RPMFile to an existing rpm.

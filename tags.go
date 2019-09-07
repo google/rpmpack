@@ -22,12 +22,18 @@ const (
 	sigSize        = 0x03e8 // 1000
 	sigPayloadSize = 0x03ef // 1007
 
-	tagName              = 0x03e8 // 1000
-	tagVersion           = 0x03e9 // 1001
-	tagRelease           = 0x03ea // 1002
-	tagSize              = 0x03f1 // 1009
-	tagOS                = 0x03fd // 1021
-	tagArch              = 0x03fe // 1022
+	tagName    = 0x03e8 // 1000
+	tagVersion = 0x03e9 // 1001
+	tagRelease = 0x03ea // 1002
+	tagSize    = 0x03f1 // 1009
+	tagOS      = 0x03fd // 1021
+	tagArch    = 0x03fe // 1022
+
+	tagPrein  = 0x03ff // 1023
+	tagPostin = 0x0400 // 1024
+	tagPreun  = 0x0401 // 1025
+	tagPostun = 0x0402 // 1026
+
 	tagFileSizes         = 0x0404 // 1028
 	tagFileModes         = 0x0406 // 1030
 	tagFileRDevs         = 0x0409 // 1033
@@ -40,6 +46,10 @@ const (
 	tagSourceRPM         = 0x0414 // 1044
 	tagFileVerifyFlags   = 0x0415 // 1045
 	tagProvides          = 0x0417 // 1047
+	tagPreinProg         = 0x043d // 1085
+	tagPostinProg        = 0x043e // 1086
+	tagPreunProg         = 0x043f // 1087
+	tagPostunProg        = 0x0440 // 1088
 	tagFileINodes        = 0x0448 // 1096
 	tagFileLangs         = 0x0449 // 1097
 	tagProvideFlags      = 0x0458 // 1112

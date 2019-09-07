@@ -4,6 +4,10 @@ def _pkg_tar2rpm_impl(ctx):
     args.add("--name", ctx.attr.pkg_name)
     args.add("--version", ctx.attr.version)
     args.add("--release", ctx.attr.release)
+    args.add("--prein", ctx.attr.prein)
+    args.add("--postin", ctx.attr.postin)
+    args.add("--preun", ctx.attr.preun)
+    args.add("--postun", ctx.attr.postun)
     args.add("--file", ctx.outputs.out)
     args.add(ctx.file.data)
     ctx.actions.run(
@@ -22,6 +26,10 @@ pkg_tar2rpm = rule(
         "pkg_name": attr.string(mandatory = True),
         "version": attr.string(mandatory = True),
         "release": attr.string(mandatory = True),
+        "prein": attr.string(),
+        "postin": attr.string(),
+        "preun": attr.string(),
+        "postun": attr.string(),
         "tar2rpm": attr.label(
             default = Label("//cmd/tar2rpm"),
             cfg = "host",

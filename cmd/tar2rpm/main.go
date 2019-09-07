@@ -30,6 +30,11 @@ var (
 	release = flag.String("release", "", "the rpm release")
 	arch    = flag.String("arch", "noarch", "the rpm architecture")
 
+	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
+	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
+	preun  = flag.String("preun", "", "preun scriptlet contents (not filename)")
+	postun = flag.String("postun", "", "postun scriptlet contents (not filename)")
+
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
 )
 
@@ -86,6 +91,11 @@ func main() {
 			Release: *release,
 			Arch:    *arch,
 		})
+	r.AddPrein(*prein)
+	r.AddPostin(*postin)
+	r.AddPreun(*preun)
+	r.AddPostun(*postun)
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)
 		os.Exit(1)
