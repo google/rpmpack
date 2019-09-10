@@ -37,7 +37,9 @@ diff_test centos_V testdata/golden_V.txt
 V_result="$?"
 diff_test centos_ls testdata/golden_ls.txt
 ls_result="$?"
+diff_test centos_preinst testdata/golden_preinst.txt
+preinst_result="$?"
 
-if [[ "$V_result" -ne 0 || "$ls_result" -ne 0 ]]; then
+if [[ "$V_result" -ne 0 || "$ls_result" -ne 0 || "$preinst_result" -ne 0 ]]; then
   exit 1
 fi

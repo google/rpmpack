@@ -54,6 +54,7 @@ pkg_tar2rpm(
     pkg_name = "rpmtest",
     release = "3.4",
     version = "1.2",
+    prein = "echo \"This is preinst\" > /tmp/preinst.txt",
 )
 
 container_image(
@@ -81,13 +82,23 @@ container_image(
     legacy_run_behavior = False,
 )
 
+container_image(
+    name = "centos_preinst",
+    testonly = True,
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && cat /tmp/preinst.txt",
+    legacy_run_behavior = False,
+)
+
 sh_test(
     name = "docker_tests",
     srcs = ["docker_tests.sh"],
     data = [
         ":centos_V",
         ":centos_ls",
+        ":centos_preinst",
         ":testdata/golden_V.txt",
         ":testdata/golden_ls.txt",
+        ":testdata/golden_preinst.txt",
     ],
 )
