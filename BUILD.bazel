@@ -70,6 +70,7 @@ container_image(
     testonly = True,
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -Vv rpmtest",
+    legacy_run_behavior = False,
 )
 
 container_image(
@@ -77,6 +78,7 @@ container_image(
     testonly = True,
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && ls -l /var/lib/rpmpack",
+    legacy_run_behavior = False,
 )
 
 sh_test(
