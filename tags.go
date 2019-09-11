@@ -22,12 +22,17 @@ const (
 	sigSize        = 0x03e8 // 1000
 	sigPayloadSize = 0x03ef // 1007
 
-	tagName    = 0x03e8 // 1000
-	tagVersion = 0x03e9 // 1001
-	tagRelease = 0x03ea // 1002
-	tagSize    = 0x03f1 // 1009
-	tagOS      = 0x03fd // 1021
-	tagArch    = 0x03fe // 1022
+	tagName        = 0x03e8 // 1000
+	tagVersion     = 0x03e9 // 1001
+	tagRelease     = 0x03ea // 1002
+	tagDescription = 0x03ed // 1005
+	tagSize        = 0x03f1 // 1009
+	tagVendor      = 0x03f3 // 1011
+	tagLicence     = 0x03f6 // 1014
+	tagPackager    = 0x03f7 // 1015
+	tagURL         = 0x03fc // 1020
+	tagOS          = 0x03fd // 1021
+	tagArch        = 0x03fe // 1022
 
 	tagPrein  = 0x03ff // 1023
 	tagPostin = 0x0400 // 1024
@@ -46,14 +51,20 @@ const (
 	tagSourceRPM         = 0x0414 // 1044
 	tagFileVerifyFlags   = 0x0415 // 1045
 	tagProvides          = 0x0417 // 1047
+	tagRequireFlags      = 0x0418 // 1048
+	tagRequire           = 0x0419 // 1049
+	tagRequireVersion    = 0x041a // 1050
 	tagPreinProg         = 0x043d // 1085
 	tagPostinProg        = 0x043e // 1086
 	tagPreunProg         = 0x043f // 1087
 	tagPostunProg        = 0x0440 // 1088
+	tagObsolete          = 0x0442 // 1090
 	tagFileINodes        = 0x0448 // 1096
 	tagFileLangs         = 0x0449 // 1097
 	tagProvideFlags      = 0x0458 // 1112
 	tagProvideVersion    = 0x0459 // 1113
+	tagObsoleteFlags     = 0x045a // 1114
+	tagObsoleteCersion   = 0x045b // 1115
 	tagDirindexes        = 0x045c // 1116
 	tagBasenames         = 0x045d // 1117
 	tagDirnames          = 0x045e // 1118
@@ -61,4 +72,22 @@ const (
 	tagPayloadCompressor = 0x0465 // 1125
 	tagPayloadFlags      = 0x0466 // 1126
 	tagFileDigestAlgo    = 0x1393 // 5011
+)
+
+type fileType int32
+
+const (
+	ConfigFile fileType = 1 << iota
+	DocFile
+	IconFile
+	MissingFile
+	NoReplaceFile
+	SpecFile
+	GhostFile
+	LicenceFile
+	ReadmeFile
+	ExcludeFile
+	UnpatchedFile
+	PubKeyFile
+	PolicyFile
 )

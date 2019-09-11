@@ -76,6 +76,8 @@ func entry(value interface{}) indexEntry {
 		return intEntry(typeInt32, len(value), value)
 	case []uint32:
 		return intEntry(typeInt32, len(value), value)
+	case []fileType:
+		return intEntry(typeInt32, len(value), value)
 	case string:
 		return indexEntry{typeString, 1, append([]byte(value), byte(00))}
 	case []byte:

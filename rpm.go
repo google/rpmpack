@@ -39,10 +39,21 @@ var (
 
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
-	Name    string
-	Version string
-	Release string
-	Arch    string
+	Name,
+	Description,
+	Version,
+	Release,
+	Arch,
+	Platform,
+	Vendor,
+	URL,
+	Packager,
+	Licence string
+	Provides,
+	Replaces,
+	Suggests,
+	Depends,
+	Conflicts []string
 }
 
 // RPMFile contains a particular file's entry and data.
@@ -53,6 +64,7 @@ type RPMFile struct {
 	Owner string
 	Group string
 	MTime uint32
+	Type  fileType
 }
 
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
@@ -71,6 +83,7 @@ type RPM struct {
 	filemtimes  []uint32
 	filedigests []string
 	filelinktos []string
+	fileflags   []fileType
 	closed      bool
 	gzPayload   *gzip.Writer
 	files       map[string]RPMFile
@@ -82,6 +95,14 @@ type RPM struct {
 
 // NewRPM creates and returns a new RPM struct.
 func NewRPM(m RPMMetaData) (*RPM, error) {
+	if m.Platform == "" {
+		m.Platform = "linux"
+	}
+
+	if len(m.Provides) == 0 {
+		m.Provides = []string{m.Name}
+	}
+
 	p := &bytes.Buffer{}
 	z, err := gzip.NewWriterLevel(p, 9)
 	if err != nil {
@@ -165,15 +186,30 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
+	h.Add(tagDescription, entry(r.Description))
 	h.Add(tagVersion, entry(r.Version))
 	h.Add(tagRelease, entry(r.Release))
 	h.Add(tagPayloadFormat, entry("cpio"))
 	h.Add(tagPayloadCompressor, entry("gzip"))
 	h.Add(tagPayloadFlags, entry("9"))
-	h.Add(tagOS, entry("linux"))
+	h.Add(tagOS, entry(r.Platform))
 	h.Add(tagArch, entry(r.Arch))
+	h.Add(tagVendor, entry(r.Vendor))
+	h.Add(tagLicence, entry(r.Licence))
+	h.Add(tagPackager, entry(r.Packager))
+	h.Add(tagURL, entry(r.URL))
+
+	if len(r.Depends) > 0 {
+		h.Add(tagRequire, entry(r.Depends))
+	}
+
+	if len(r.Replaces) > 0 {
+		h.Add(tagObsolete, entry(r.Replaces))
+	}
+	// TODO: figure out the reccomend, suggest, and conflicts tags
+
 	// A package must provide itself...
-	h.Add(tagProvides, entry([]string{r.Name}))
+	h.Add(tagProvides, entry(r.Provides))
 	h.Add(tagProvideVersion, entry([]string{r.Version + "-" + r.Release}))
 	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
@@ -209,11 +245,11 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileMTimes, entry(r.filemtimes))
 	h.Add(tagFileDigests, entry(r.filedigests))
 	h.Add(tagFileLinkTos, entry(r.filelinktos))
+	h.Add(tagFileFlags, entry(r.fileflags))
 
 	inodes := make([]int32, len(r.dirindexes))
 	digestAlgo := make([]int32, len(r.dirindexes))
 	verifyFlags := make([]int32, len(r.dirindexes))
-	fileFlags := make([]int32, len(r.dirindexes))
 	fileRDevs := make([]int16, len(r.dirindexes))
 	fileLangs := make([]string, len(r.dirindexes))
 
@@ -224,13 +260,11 @@ func (r *RPM) writeFileIndexes(h *index) {
 		digestAlgo[ii] = int32(8)
 		// With regular files, it seems like we can always enable all of the verify flags
 		verifyFlags[ii] = int32(-1)
-		fileFlags[ii] = int32(0)
 		fileRDevs[ii] = int16(1)
 	}
 	h.Add(tagFileINodes, entry(inodes))
 	h.Add(tagFileDigestAlgo, entry(digestAlgo))
 	h.Add(tagFileVerifyFlags, entry(verifyFlags))
-	h.Add(tagFileFlags, entry(fileFlags))
 	h.Add(tagFileRDevs, entry(fileRDevs))
 	h.Add(tagFileLangs, entry(fileLangs))
 }
@@ -271,6 +305,7 @@ func (r *RPM) writeFile(f RPMFile) error {
 	r.fileowners = append(r.fileowners, f.Group)
 	r.filegroups = append(r.filegroups, f.Owner)
 	r.filemtimes = append(r.filemtimes, f.MTime)
+	r.fileflags = append(r.fileflags, f.Type)
 	links := 1
 	switch {
 	case f.Mode&040000 != 0: // directory
