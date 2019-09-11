@@ -51,9 +51,9 @@ const (
 	tagSourceRPM         = 0x0414 // 1044
 	tagFileVerifyFlags   = 0x0415 // 1045
 	tagProvides          = 0x0417 // 1047
-	tagRequireFlags      = 0x0418 // 1048
+	//tagRequireFlags      = 0x0418 // 1048
 	tagRequire           = 0x0419 // 1049
-	tagRequireVersion    = 0x041a // 1050
+	//tagRequireVersion    = 0x041a // 1050
 	tagPreinProg         = 0x043d // 1085
 	tagPostinProg        = 0x043e // 1086
 	tagPreunProg         = 0x043f // 1087
@@ -63,8 +63,8 @@ const (
 	tagFileLangs         = 0x0449 // 1097
 	tagProvideFlags      = 0x0458 // 1112
 	tagProvideVersion    = 0x0459 // 1113
-	tagObsoleteFlags     = 0x045a // 1114
-	tagObsoleteCersion   = 0x045b // 1115
+	//tagObsoleteFlags     = 0x045a // 1114
+	//tagObsoleteVersion   = 0x045b // 1115
 	tagDirindexes        = 0x045c // 1116
 	tagBasenames         = 0x045d // 1117
 	tagDirnames          = 0x045e // 1118
