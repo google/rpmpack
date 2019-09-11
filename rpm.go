@@ -97,6 +97,14 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	}, nil
 }
 
+func (r *RPM) FullVersion() string {
+	if r.Release != "" {
+		return fmt.Sprintf("%s-%s", r.Version, r.Release)
+	}
+
+	return r.Version
+}
+
 // Write closes the rpm and writes the whole rpm to an io.Writer
 func (r *RPM) Write(w io.Writer) error {
 	if r.closed {
@@ -120,7 +128,7 @@ func (r *RPM) Write(w io.Writer) error {
 		return errors.Wrap(err, "failed to close gzip payload")
 	}
 
-	if _, err := w.Write(lead(r.Name, r.Version, r.Release)); err != nil {
+	if _, err := w.Write(lead(r.Name, r.FullVersion())); err != nil {
 		return errors.Wrap(err, "failed to write lead")
 	}
 	// Write the regular header.
@@ -174,11 +182,11 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagArch, entry(r.Arch))
 	// A package must provide itself...
 	h.Add(tagProvides, entry([]string{r.Name}))
-	h.Add(tagProvideVersion, entry([]string{r.Version + "-" + r.Release}))
+	h.Add(tagProvideVersion, entry([]string{r.FullVersion()}))
 	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
-	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s-%s.src.rpm", r.Name, r.Version, r.Release)))
+	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
 	if r.prein != "" {
 		h.Add(tagPrein, entry(r.prein))
 		h.Add(tagPreinProg, entry("/bin/sh"))
