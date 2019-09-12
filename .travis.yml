@@ -21,5 +21,8 @@ jobs:
       - curl -L -o "bazel-installer" https://github.com/bazelbuild/bazel/releases/download/0.29.0/bazel-0.29.0-installer-linux-x86_64.sh
       - bash bazel-installer --user
     script:
-      - ~/bin/bazel build --curses=no //...
-      - ~/bin/bazel test --test_output=all --curses=no //...
+      - ~/bin/bazel build --curses=no //:all
+      - ~/bin/bazel test --test_output=all --curses=no //:all
+      - cd example_bazel
+      - ~/bin/bazel build --curses=no //:all
+      - ~/bin/bazel test --test_output=all --curses=no //:all
