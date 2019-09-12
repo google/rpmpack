@@ -121,7 +121,6 @@ func NewRPM(m RPMMetaData) (_ *RPM, err error) {
 		z, err = xz.NewWriter(p)
 		z.(*xz.Writer).WriterConfig.Properties.LC = 9
 	}
-	fmt.Println(m.Compressor)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create gzip writer")
