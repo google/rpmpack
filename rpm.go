@@ -27,9 +27,9 @@ import (
 	"sort"
 
 	cpio "github.com/cavaliercoder/go-cpio"
-	"github.com/andrew-d/lzma"
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 var (
@@ -55,6 +55,7 @@ type RPMMetaData struct {
 	Provides,
 	Replaces,
 	Suggests,
+	Recommends,
 	Depends,
 	Conflicts []string
 }
@@ -73,27 +74,27 @@ type RPMFile struct {
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
 type RPM struct {
 	RPMMetaData
-	di          *dirIndex
-	payload     *bytes.Buffer
-	payloadSize uint
-	cpio        *cpio.Writer
-	basenames   []string
-	dirindexes  []uint32
-	filesizes   []uint32
-	filemodes   []uint16
-	fileowners  []string
-	filegroups  []string
-	filemtimes  []uint32
-	filedigests []string
-	filelinktos []string
-	fileflags   []fileType
-	closed      bool
-	compressedPayload   io.WriteCloser
-	files       map[string]RPMFile
-	prein       string
-	postin      string
-	preun       string
-	postun      string
+	di                *dirIndex
+	payload           *bytes.Buffer
+	payloadSize       uint
+	cpio              *cpio.Writer
+	basenames         []string
+	dirindexes        []uint32
+	filesizes         []uint32
+	filemodes         []uint16
+	fileowners        []string
+	filegroups        []string
+	filemtimes        []uint32
+	filedigests       []string
+	filelinktos       []string
+	fileflags         []fileType
+	closed            bool
+	compressedPayload io.WriteCloser
+	files             map[string]RPMFile
+	prein             string
+	postin            string
+	preun             string
+	postun            string
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -116,22 +117,21 @@ func NewRPM(m RPMMetaData) (_ *RPM, err error) {
 	case "gzip":
 		z, err = gzip.NewWriterLevel(p, 9)
 	case "lzma":
-		z = lzma.NewWriterLevel(p, 9)
+		z, err = lzma.NewWriter(p)
 	case "xz":
 		z, err = xz.NewWriter(p)
-		z.(*xz.Writer).WriterConfig.Properties.LC = 9
 	}
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create gzip writer")
+		return nil, errors.Wrapf(err, "failed to create %s writer", m.Compressor)
 	}
 	return &RPM{
-		RPMMetaData: m,
-		di:          newDirIndex(),
-		payload:     p,
-		compressedPayload:   z,
-		cpio:        cpio.NewWriter(z),
-		files:       make(map[string]RPMFile),
+		RPMMetaData:       m,
+		di:                newDirIndex(),
+		payload:           p,
+		compressedPayload: z,
+		cpio:              cpio.NewWriter(z),
+		files:             make(map[string]RPMFile),
 	}, nil
 }
 
@@ -155,7 +155,7 @@ func (r *RPM) Write(w io.Writer) error {
 		return errors.Wrap(err, "failed to close cpio payload")
 	}
 	if err := r.compressedPayload.Close(); err != nil {
-		return errors.Wrap(err, "failed to close gzip payload")
+		return errors.Wrap(err, "failed to close compressed payload")
 	}
 
 	if _, err := w.Write(lead(r.Name, r.Version, r.Release)); err != nil {
@@ -189,7 +189,6 @@ func (r *RPM) Write(w io.Writer) error {
 	}
 	_, err = w.Write(r.payload.Bytes())
 	return errors.Wrap(err, "failed to write payload")
-
 }
 
 // Only call this after the payload and header were written.
@@ -223,7 +222,18 @@ func (r *RPM) writeGenIndexes(h *index) {
 	if len(r.Replaces) > 0 {
 		h.Add(tagObsolete, entry(r.Replaces))
 	}
-	// TODO: figure out the reccomend, suggest, and conflicts tags
+
+	if len(r.Conflicts) > 0 {
+		h.Add(tagConflicts, entry(r.Conflicts))
+	}
+
+	if len(r.Recommends) > 0 {
+		h.Add(tagRecommends, entry(r.Recommends))
+	}
+
+	if len(r.Suggests) > 0 {
+		h.Add(tagSuggests, entry(r.Suggests))
+	}
 
 	// A package must provide itself...
 	h.Add(tagProvides, entry(r.Provides))
