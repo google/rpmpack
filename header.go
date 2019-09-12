@@ -173,16 +173,16 @@ func (i *index) eigenHeader() indexEntry {
 	return entry(b.Bytes())
 }
 
-func lead(name, version string) []byte {
+func lead(name, fullVersion string) []byte {
 	// RPM format = 0xedabeedb
-	// version 3.0 = 0x0300
+	// fullVersion 3.0 = 0x0300
 	// type binary = 0x0000
 	// machine archnum (i386?) = 0x0001
 	// name ( 66 bytes, with null termination)
 	// osnum (linux?) = 0x0001
 	// sig type (header-style) = 0x0005
 	// reserved 16 bytes of 0x00
-	n := []byte(fmt.Sprintf("%s-%s", name, version))
+	n := []byte(fmt.Sprintf("%s-%s", name, fullVersion))
 	if len(n) > 65 {
 		n = n[:65]
 	}

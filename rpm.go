@@ -97,6 +97,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	}, nil
 }
 
+// FullVersion properly combines version and release fields to a version string
 func (r *RPM) FullVersion() string {
 	if r.Release != "" {
 		return fmt.Sprintf("%s-%s", r.Version, r.Release)
