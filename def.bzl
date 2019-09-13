@@ -25,7 +25,7 @@ pkg_tar2rpm = rule(
         "data": attr.label(mandatory = True, allow_single_file = [".tar"]),
         "pkg_name": attr.string(mandatory = True),
         "version": attr.string(mandatory = True),
-        "release": attr.string(mandatory = True),
+        "release": attr.string(),
         "prein": attr.string(),
         "postin": attr.string(),
         "preun": attr.string(),

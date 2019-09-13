@@ -25,6 +25,7 @@ import (
 	"io"
 	"path"
 	"sort"
+	"strings"
 
 	cpio "github.com/cavaliercoder/go-cpio"
 	"github.com/pkg/errors"
@@ -39,10 +40,28 @@ var (
 
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
+	Name,
+	Description,
+	Version,
+	Release,
+	Arch,
+	OS,
+	Vendor,
+	URL,
+	Packager,
+	Licence string
+	Provides,
+	Obsoletes,
+	Suggests,
+	Recommends,
+	Requires,
+	Conflicts []string
+}
+
+type pkg struct {
 	Name    string
 	Version string
-	Release string
-	Arch    string
+	Sense   rpmSense
 }
 
 // RPMFile contains a particular file's entry and data.
@@ -78,23 +97,80 @@ type RPM struct {
 	postin      string
 	preun       string
 	postun      string
+	parsedProvides,
+	parsedObsoletes,
+	parseSuggests,
+	parsedRecommends,
+	parsedRequires,
+	parsedConflicts []*pkg
 }
 
 // NewRPM creates and returns a new RPM struct.
-func NewRPM(m RPMMetaData) (*RPM, error) {
+func NewRPM(m RPMMetaData) (rpm *RPM, err error) {
+	if m.OS == "" {
+		m.OS = "linux"
+	}
+
+	var z *gzip.Writer
 	p := &bytes.Buffer{}
-	z, err := gzip.NewWriterLevel(p, 9)
-	if err != nil {
+	if z, err = gzip.NewWriterLevel(p, 9); err != nil {
 		return nil, errors.Wrap(err, "failed to create gzip writer")
 	}
-	return &RPM{
+	rpm = &RPM{
 		RPMMetaData: m,
 		di:          newDirIndex(),
 		payload:     p,
 		gzPayload:   z,
 		cpio:        cpio.NewWriter(z),
 		files:       make(map[string]RPMFile),
-	}, nil
+	}
+	err = rpm.ParsePackages()
+	return rpm, err
+}
+
+// ParsePackages parses the various package related strings into their name, version and sense fields
+func (r *RPM) ParsePackages() (err error) {
+	if r.parsedProvides, err = parsePkg(r.Provides); err != nil {
+		return err
+	}
+
+	var selfFound bool
+	for idx := range r.parsedProvides {
+		if r.parsedProvides[idx].Name == r.Name {
+			selfFound = true
+			r.parsedProvides[idx].Version = r.Version
+			r.parsedProvides[idx].Sense = SenseEqual
+		}
+	}
+	if !selfFound {
+		r.parsedProvides = append(r.parsedProvides, &pkg{
+			Name:    r.Name,
+			Version: r.Version,
+			Sense:   SenseEqual,
+		})
+	}
+
+	if r.parsedObsoletes, err = parsePkg(r.Obsoletes); err != nil {
+		return err
+	}
+
+	if r.parseSuggests, err = parsePkg(r.Suggests); err != nil {
+		return err
+	}
+
+	if r.parsedRecommends, err = parsePkg(r.Recommends); err != nil {
+		return err
+	}
+
+	if r.parsedRequires, err = parsePkg(r.Requires); err != nil {
+		return err
+	}
+
+	if r.parsedConflicts, err = parsePkg(r.Conflicts); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // FullVersion properly combines version and release fields to a version string
@@ -174,17 +250,109 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
+	h.Add(tagDescription, entry(r.Description))
 	h.Add(tagVersion, entry(r.Version))
 	h.Add(tagRelease, entry(r.Release))
 	h.Add(tagPayloadFormat, entry("cpio"))
 	h.Add(tagPayloadCompressor, entry("gzip"))
 	h.Add(tagPayloadFlags, entry("9"))
-	h.Add(tagOS, entry("linux"))
+	h.Add(tagOS, entry(r.OS))
 	h.Add(tagArch, entry(r.Arch))
-	// A package must provide itself...
-	h.Add(tagProvides, entry([]string{r.Name}))
-	h.Add(tagProvideVersion, entry([]string{r.FullVersion()}))
-	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
+	h.Add(tagVendor, entry(r.Vendor))
+	h.Add(tagLicence, entry(r.Licence))
+	h.Add(tagPackager, entry(r.Packager))
+	h.Add(tagURL, entry(r.URL))
+
+	if len(r.parsedRequires) > 0 {
+		names := make([]string, len(r.parsedRequires))
+		versions := make([]string, len(r.parsedRequires))
+		flags := make([]uint32, len(r.parsedRequires))
+
+		for idx := range r.parsedRequires {
+			names[idx] = r.parsedRequires[idx].Name
+			versions[idx] = r.parsedRequires[idx].Version
+			flags[idx] = uint32(r.parsedRequires[idx].Sense)
+		}
+		h.Add(tagRequire, entry(names))
+		h.Add(tagRequireVersion, entry(versions))
+		h.Add(tagRequireFlags, entry(flags))
+	}
+
+	if len(r.parsedObsoletes) > 0 {
+		names := make([]string, len(r.parsedObsoletes))
+		versions := make([]string, len(r.parsedObsoletes))
+		flags := make([]uint32, len(r.parsedObsoletes))
+
+		for idx := range r.parsedObsoletes {
+			names[idx] = r.parsedObsoletes[idx].Name
+			versions[idx] = r.parsedObsoletes[idx].Version
+			flags[idx] = uint32(r.parsedObsoletes[idx].Sense)
+		}
+		h.Add(tagObsolete, entry(names))
+		h.Add(tagObsoleteVersion, entry(versions))
+		h.Add(tagObsoleteFlags, entry(flags))
+	}
+
+	if len(r.parsedConflicts) > 0 {
+		names := make([]string, len(r.parsedConflicts))
+		versions := make([]string, len(r.parsedConflicts))
+		flags := make([]uint32, len(r.parsedConflicts))
+
+		for idx := range r.parsedConflicts {
+			names[idx] = r.parsedConflicts[idx].Name
+			versions[idx] = r.parsedConflicts[idx].Version
+			flags[idx] = uint32(r.parsedConflicts[idx].Sense)
+		}
+		h.Add(tagConflicts, entry(names))
+		h.Add(tagConflictVersion, entry(versions))
+		h.Add(tagConflictFlags, entry(flags))
+	}
+
+	if len(r.parsedRecommends) > 0 {
+		names := make([]string, len(r.parsedRecommends))
+		versions := make([]string, len(r.parsedRecommends))
+		flags := make([]uint32, len(r.parsedRecommends))
+
+		for idx := range r.parsedRecommends {
+			names[idx] = r.parsedRecommends[idx].Name
+			versions[idx] = r.parsedRecommends[idx].Version
+			flags[idx] = uint32(r.parsedRecommends[idx].Sense)
+		}
+		h.Add(tagRecommends, entry(names))
+		h.Add(tagRecommendVersion, entry(versions))
+		h.Add(tagRecommendFlags, entry(flags))
+	}
+
+	if len(r.parseSuggests) > 0 {
+		names := make([]string, len(r.parseSuggests))
+		versions := make([]string, len(r.parseSuggests))
+		flags := make([]uint32, len(r.parseSuggests))
+
+		for idx := range r.parseSuggests {
+			names[idx] = r.parseSuggests[idx].Name
+			versions[idx] = r.parseSuggests[idx].Version
+			flags[idx] = uint32(r.parseSuggests[idx].Sense)
+		}
+		h.Add(tagSuggests, entry(names))
+		h.Add(tagSuggestVersion, entry(versions))
+		h.Add(tagSuggestFlags, entry(flags))
+	}
+
+	if len(r.parsedProvides) > 0 {
+		names := make([]string, len(r.parsedProvides))
+		versions := make([]string, len(r.parsedProvides))
+		flags := make([]uint32, len(r.parsedProvides))
+
+		for idx := range r.parsedProvides {
+			names[idx] = r.parsedProvides[idx].Name
+			versions[idx] = r.parsedProvides[idx].Version
+			flags[idx] = uint32(r.parsedProvides[idx].Sense)
+		}
+		h.Add(tagProvides, entry(names))
+		h.Add(tagProvideVersion, entry(versions))
+		h.Add(tagProvideFlags, entry(flags))
+	}
+
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
@@ -316,4 +484,56 @@ func (r *RPM) writePayload(f RPMFile, links int) error {
 	}
 	r.payloadSize += uint(len(f.Body))
 	return nil
+}
+
+func parsePkg(pkgList []string) ([]*pkg, error) {
+	parsed := make([]*pkg, len(pkgList))
+	for idx, pkgString := range pkgList {
+		var (
+			pkgInfo  []string
+			pkgSense = SenseAny
+		)
+
+		switch {
+		case strings.Contains(pkgString, cmpgte):
+			pkgInfo = strings.Split(pkgString, cmpgte)
+			if len(pkgInfo) != 2 {
+				return nil, fmt.Errorf("%v did not parse the package name and version properly", pkgString)
+			}
+			pkgSense = SenseEqual | SenseGreater
+		case strings.Contains(pkgString, cmplte):
+			pkgInfo = strings.Split(pkgString, cmplte)
+			if len(pkgInfo) != 2 {
+				return nil, fmt.Errorf("%v did not parse the package name and version properly", pkgString)
+			}
+			pkgSense = SenseEqual | SenseLess
+		case strings.Contains(pkgString, cmpeq):
+			pkgInfo = strings.Split(pkgString, cmpeq)
+			if len(pkgInfo) != 2 {
+				return nil, fmt.Errorf("%v did not parse the package name and version properly", pkgString)
+			}
+			pkgSense = SenseEqual
+		case strings.Contains(pkgString, cmpgt):
+			pkgInfo = strings.Split(pkgString, cmpgt)
+			if len(pkgInfo) != 2 {
+				return nil, fmt.Errorf("%v did not parse the package name and version properly", pkgString)
+			}
+			pkgSense = SenseGreater
+		case strings.Contains(pkgString, cmplt):
+			pkgInfo = strings.Split(pkgString, cmplt)
+			if len(pkgInfo) != 2 {
+				return nil, fmt.Errorf("%v did not parse the package name and version properly", pkgString)
+			}
+			pkgSense = SenseLess
+		default:
+			pkgInfo = []string{pkgString, ""}
+		}
+		parsed[idx] = &pkg{
+			Name:    strings.Trim(pkgInfo[0], " "),
+			Version: strings.Trim(pkgInfo[1], " "),
+			Sense:   pkgSense,
+		}
+	}
+
+	return parsed, nil
 }

@@ -24,11 +24,35 @@ import (
 	"github.com/google/rpmpack"
 )
 
+type stringSlice []string
+func (i *stringSlice) String() string {
+	return "my string representation"
+}
+
+func (i *stringSlice) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+func (i *stringSlice) Value() []string {
+	v := make([]string, len(*i))
+	for idx := range *i {
+		v[idx] = (*i)[idx]
+	}
+	return v
+}
+
 var (
+	provides, obsoletes, suggests, recommends, requires, conflicts stringSlice
 	name    = flag.String("name", "", "the package name")
 	version = flag.String("version", "", "the package version")
 	release = flag.String("release", "", "the rpm release")
 	arch    = flag.String("arch", "noarch", "the rpm architecture")
+	osName = flag.String("os", "linux", "the rpm os")
+	description = flag.String("description", "", "the rpm description")
+	vendor = flag.String("vendor", "", "the rpm vendor")
+	packager = flag.String("packager", "", "the rpm packager")
+	url = flag.String("url", "", "the rpm url")
+	licence = flag.String("licence", "", "the rpm licence name")
 
 	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
 	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
@@ -48,10 +72,16 @@ Options:
 }
 
 func main() {
+	flag.Var(&provides, "provides", "rpm provides values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&obsoletes, "obsoletes", "rpm obsoletes values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&suggests, "suggests", "rpm suggests values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&recommends, "recommends", "rpm recommends values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&requires, "requires", "rpm requires values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&conflicts, "conflicts", "rpm provides values, can be just name or in the form of name=version (eg. bla=1.2.3)")
 	flag.Usage = usage
 	flag.Parse()
-	if *name == "" || *version == "" || *release == "" {
-		fmt.Fprintln(os.Stderr, "name, version, and release are all required")
+	if *name == "" || *version == "" {
+		fmt.Fprintln(os.Stderr, "name and version are required")
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -90,6 +120,17 @@ func main() {
 			Version: *version,
 			Release: *release,
 			Arch:    *arch,
+			OS: *osName,
+			Vendor: *vendor,
+			Packager: *packager,
+			URL: *url,
+			Licence: *licence,
+			Provides: provides.Value(),
+			Obsoletes: obsoletes.Value(),
+			Suggests: suggests.Value(),
+			Recommends: recommends.Value(),
+			Requires: requires.Value(),
+			Conflicts: conflicts.Value(),
 		})
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
