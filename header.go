@@ -175,7 +175,7 @@ func (i *index) eigenHeader() indexEntry {
 
 func lead(name, fullVersion string) []byte {
 	// RPM format = 0xedabeedb
-	// fullVersion 3.0 = 0x0300
+	// version 3.0 = 0x0300
 	// type binary = 0x0000
 	// machine archnum (i386?) = 0x0001
 	// name ( 66 bytes, with null termination)
