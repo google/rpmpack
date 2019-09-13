@@ -68,6 +68,12 @@ go_repository(
     importpath = "github.com/cavaliercoder/go-cpio",
 )
 
+go_repository(
+    name = "com_github_ulikunitz_xz",
+    importpath = "github.com/ulikunitz/xz",
+    tag = "v0.5.6",
+)
+
 container_pull(
     name = "centos",
     digest = "sha256:365fc7f33107869dfcf2b3ba220ce0aa42e16d3f8e8b3c21d72af1ee622f0cf0",
