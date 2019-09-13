@@ -41,10 +41,10 @@ var (
 
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
-	Name    string
-	Version string
-	Release string
-	Arch    string
+	Name       string
+	Version    string
+	Release    string
+	Arch       string
 	Compressor string
 }
 
@@ -61,26 +61,26 @@ type RPMFile struct {
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
 type RPM struct {
 	RPMMetaData
-	di          *dirIndex
-	payload     *bytes.Buffer
-	payloadSize uint
-	cpio        *cpio.Writer
-	basenames   []string
-	dirindexes  []uint32
-	filesizes   []uint32
-	filemodes   []uint16
-	fileowners  []string
-	filegroups  []string
-	filemtimes  []uint32
-	filedigests []string
-	filelinktos []string
-	closed      bool
+	di                *dirIndex
+	payload           *bytes.Buffer
+	payloadSize       uint
+	cpio              *cpio.Writer
+	basenames         []string
+	dirindexes        []uint32
+	filesizes         []uint32
+	filemodes         []uint16
+	fileowners        []string
+	filegroups        []string
+	filemtimes        []uint32
+	filedigests       []string
+	filelinktos       []string
+	closed            bool
 	compressedPayload io.WriteCloser
-	files       map[string]RPMFile
-	prein       string
-	postin      string
-	preun       string
-	postun      string
+	files             map[string]RPMFile
+	prein             string
+	postin            string
+	preun             string
+	postun            string
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -105,12 +105,12 @@ func NewRPM(m RPMMetaData) (rpm *RPM, err error) {
 		return nil, errors.Wrap(err, "failed to create compression writer")
 	}
 	return &RPM{
-		RPMMetaData: m,
-		di:          newDirIndex(),
-		payload:     p,
-		compressedPayload:   z,
-		cpio:        cpio.NewWriter(z),
-		files:       make(map[string]RPMFile),
+		RPMMetaData:       m,
+		di:                newDirIndex(),
+		payload:           p,
+		compressedPayload: z,
+		cpio:              cpio.NewWriter(z),
+		files:             make(map[string]RPMFile),
 	}, nil
 }
 

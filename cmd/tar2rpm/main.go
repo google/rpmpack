@@ -25,11 +25,11 @@ import (
 )
 
 var (
-	name    = flag.String("name", "", "the package name")
-	version = flag.String("version", "", "the package version")
-	release = flag.String("release", "", "the rpm release")
-	arch    = flag.String("arch", "noarch", "the rpm architecture")
-	compressor    = flag.String("compressor", "gzip", "the rpm compressor")
+	name       = flag.String("name", "", "the package name")
+	version    = flag.String("version", "", "the package version")
+	release    = flag.String("release", "", "the rpm release")
+	arch       = flag.String("arch", "noarch", "the rpm architecture")
+	compressor = flag.String("compressor", "gzip", "the rpm compressor")
 
 	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
 	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
@@ -87,10 +87,10 @@ func main() {
 	r, err := rpmpack.FromTar(
 		i,
 		rpmpack.RPMMetaData{
-			Name:    *name,
-			Version: *version,
-			Release: *release,
-			Arch:    *arch,
+			Name:       *name,
+			Version:    *version,
+			Release:    *release,
+			Arch:       *arch,
 			Compressor: *compressor,
 		})
 	r.AddPrein(*prein)
