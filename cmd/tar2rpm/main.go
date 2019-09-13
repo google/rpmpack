@@ -25,6 +25,7 @@ import (
 )
 
 type stringSlice []string
+
 func (i *stringSlice) String() string {
 	return "my string representation"
 }
@@ -42,17 +43,22 @@ func (i *stringSlice) Value() []string {
 }
 
 var (
-	provides, obsoletes, suggests, recommends, requires, conflicts stringSlice
-	name    = flag.String("name", "", "the package name")
-	version = flag.String("version", "", "the package version")
-	release = flag.String("release", "", "the rpm release")
-	arch    = flag.String("arch", "noarch", "the rpm architecture")
-	osName = flag.String("os", "linux", "the rpm os")
+	provides,
+	obsoletes,
+	suggests,
+	recommends,
+	requires,
+	conflicts stringSlice
+	name        = flag.String("name", "", "the package name")
+	version     = flag.String("version", "", "the package version")
+	release     = flag.String("release", "", "the rpm release")
+	arch        = flag.String("arch", "noarch", "the rpm architecture")
+	osName      = flag.String("os", "linux", "the rpm os")
 	description = flag.String("description", "", "the rpm description")
-	vendor = flag.String("vendor", "", "the rpm vendor")
-	packager = flag.String("packager", "", "the rpm packager")
-	url = flag.String("url", "", "the rpm url")
-	licence = flag.String("licence", "", "the rpm licence name")
+	vendor      = flag.String("vendor", "", "the rpm vendor")
+	packager    = flag.String("packager", "", "the rpm packager")
+	url         = flag.String("url", "", "the rpm url")
+	licence     = flag.String("licence", "", "the rpm licence name")
 
 	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
 	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
@@ -116,21 +122,22 @@ func main() {
 	r, err := rpmpack.FromTar(
 		i,
 		rpmpack.RPMMetaData{
-			Name:    *name,
-			Version: *version,
-			Release: *release,
-			Arch:    *arch,
-			OS: *osName,
-			Vendor: *vendor,
-			Packager: *packager,
-			URL: *url,
-			Licence: *licence,
-			Provides: provides.Value(),
-			Obsoletes: obsoletes.Value(),
-			Suggests: suggests.Value(),
-			Recommends: recommends.Value(),
-			Requires: requires.Value(),
-			Conflicts: conflicts.Value(),
+			Name:        *name,
+			Description: *description,
+			Version:     *version,
+			Release:     *release,
+			Arch:        *arch,
+			OS:          *osName,
+			Vendor:      *vendor,
+			Packager:    *packager,
+			URL:         *url,
+			Licence:     *licence,
+			Provides:    provides.Value(),
+			Obsoletes:   obsoletes.Value(),
+			Suggests:    suggests.Value(),
+			Recommends:  recommends.Value(),
+			Requires:    requires.Value(),
+			Conflicts:   conflicts.Value(),
 		})
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
