@@ -32,7 +32,7 @@ func TestLead(t *testing.T) {
 		"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc",
 	}
 	for _, n := range names {
-		if got := len(lead(n, "1", "2")); got != 0x60 {
+		if got := len(lead(n, "1-2")); got != 0x60 {
 			t.Errorf("len(lead(%s)) = %#x, want %#x", n, got, 0x60)
 		}
 	}
