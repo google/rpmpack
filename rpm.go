@@ -84,14 +84,15 @@ type RPM struct {
 }
 
 // NewRPM creates and returns a new RPM struct.
-func NewRPM(m RPMMetaData) (rpm *RPM, err error) {
-	if len(m.Compressor) == 0 {
-		m.Compressor = "gzip"
-	}
+func NewRPM(m RPMMetaData) (*RPM, error) {
+	var err error
 
 	p := &bytes.Buffer{}
 	var z io.WriteCloser
 	switch m.Compressor {
+	case "":
+		m.Compressor = "gzip"
+		fallthrough
 	case "gzip":
 		z, err = gzip.NewWriterLevel(p, 9)
 	case "lzma":
