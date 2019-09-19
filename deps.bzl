@@ -26,3 +26,8 @@ def rpmpack_dependencies():
       importpath = "github.com/cavaliercoder/go-cpio",
   )
 
+  go_repository(
+      name = "com_github_ulikunitz_xz",
+      importpath = "github.com/ulikunitz/xz",
+      tag = "v0.5.6",
+  )

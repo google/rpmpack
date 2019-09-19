@@ -28,6 +28,8 @@ import (
 
 	cpio "github.com/cavaliercoder/go-cpio"
 	"github.com/pkg/errors"
+	"github.com/ulikunitz/xz"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 var (
@@ -39,10 +41,11 @@ var (
 
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
-	Name    string
-	Version string
-	Release string
-	Arch    string
+	Name       string
+	Version    string
+	Release    string
+	Arch       string
+	Compressor string
 }
 
 // RPMFile contains a particular file's entry and data.
@@ -58,43 +61,67 @@ type RPMFile struct {
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
 type RPM struct {
 	RPMMetaData
-	di          *dirIndex
-	payload     *bytes.Buffer
-	payloadSize uint
-	cpio        *cpio.Writer
-	basenames   []string
-	dirindexes  []uint32
-	filesizes   []uint32
-	filemodes   []uint16
-	fileowners  []string
-	filegroups  []string
-	filemtimes  []uint32
-	filedigests []string
-	filelinktos []string
-	closed      bool
-	gzPayload   *gzip.Writer
-	files       map[string]RPMFile
-	prein       string
-	postin      string
-	preun       string
-	postun      string
+	di                *dirIndex
+	payload           *bytes.Buffer
+	payloadSize       uint
+	cpio              *cpio.Writer
+	basenames         []string
+	dirindexes        []uint32
+	filesizes         []uint32
+	filemodes         []uint16
+	fileowners        []string
+	filegroups        []string
+	filemtimes        []uint32
+	filedigests       []string
+	filelinktos       []string
+	closed            bool
+	compressedPayload io.WriteCloser
+	files             map[string]RPMFile
+	prein             string
+	postin            string
+	preun             string
+	postun            string
 }
 
 // NewRPM creates and returns a new RPM struct.
 func NewRPM(m RPMMetaData) (*RPM, error) {
+	var err error
+
 	p := &bytes.Buffer{}
-	z, err := gzip.NewWriterLevel(p, 9)
+	var z io.WriteCloser
+	switch m.Compressor {
+	case "":
+		m.Compressor = "gzip"
+		fallthrough
+	case "gzip":
+		z, err = gzip.NewWriterLevel(p, 9)
+	case "lzma":
+		z, err = lzma.NewWriter(p)
+	case "xz":
+		z, err = xz.NewWriter(p)
+	default:
+		err = fmt.Errorf("unknown compressor type %s", m.Compressor)
+	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create gzip writer")
+		return nil, errors.Wrap(err, "failed to create compression writer")
 	}
 	return &RPM{
-		RPMMetaData: m,
-		di:          newDirIndex(),
-		payload:     p,
-		gzPayload:   z,
-		cpio:        cpio.NewWriter(z),
-		files:       make(map[string]RPMFile),
+		RPMMetaData:       m,
+		di:                newDirIndex(),
+		payload:           p,
+		compressedPayload: z,
+		cpio:              cpio.NewWriter(z),
+		files:             make(map[string]RPMFile),
 	}, nil
+}
+
+// FullVersion properly combines version and release fields to a version string
+func (r *RPM) FullVersion() string {
+	if r.Release != "" {
+		return fmt.Sprintf("%s-%s", r.Version, r.Release)
+	}
+
+	return r.Version
 }
 
 // Write closes the rpm and writes the whole rpm to an io.Writer
@@ -116,11 +143,11 @@ func (r *RPM) Write(w io.Writer) error {
 	if err := r.cpio.Close(); err != nil {
 		return errors.Wrap(err, "failed to close cpio payload")
 	}
-	if err := r.gzPayload.Close(); err != nil {
+	if err := r.compressedPayload.Close(); err != nil {
 		return errors.Wrap(err, "failed to close gzip payload")
 	}
 
-	if _, err := w.Write(lead(r.Name, r.Version, r.Release)); err != nil {
+	if _, err := w.Write(lead(r.Name, r.FullVersion())); err != nil {
 		return errors.Wrap(err, "failed to write lead")
 	}
 	// Write the regular header.
@@ -168,17 +195,17 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagVersion, entry(r.Version))
 	h.Add(tagRelease, entry(r.Release))
 	h.Add(tagPayloadFormat, entry("cpio"))
-	h.Add(tagPayloadCompressor, entry("gzip"))
+	h.Add(tagPayloadCompressor, entry(r.Compressor))
 	h.Add(tagPayloadFlags, entry("9"))
 	h.Add(tagOS, entry("linux"))
 	h.Add(tagArch, entry(r.Arch))
 	// A package must provide itself...
 	h.Add(tagProvides, entry([]string{r.Name}))
-	h.Add(tagProvideVersion, entry([]string{r.Version + "-" + r.Release}))
+	h.Add(tagProvideVersion, entry([]string{r.FullVersion()}))
 	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
-	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s-%s.src.rpm", r.Name, r.Version, r.Release)))
+	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
 	if r.prein != "" {
 		h.Add(tagPrein, entry(r.prein))
 		h.Add(tagPreinProg, entry("/bin/sh"))
