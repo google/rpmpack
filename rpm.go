@@ -167,6 +167,10 @@ func (r *RPM) Write(w io.Writer) error {
 	h := newIndex(immutable)
 	r.writeGenIndexes(h)
 	r.writeFileIndexes(h)
+	if err := r.writeRelationIndexes(h); err != nil {
+		return err
+	}
+
 	hb, err := h.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve header")
@@ -201,6 +205,30 @@ func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
 	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
 }
 
+func (r *RPM) writeRelationIndexes(h *index) error {
+	// add all relation categories
+	if err := r.Provides.AddToIndex(ProvidesCategory, h); err != nil {
+		return errors.Wrap(err, "failed to add provides")
+	}
+	if err := r.Obsoletes.AddToIndex(ObsoletesCategory, h); err != nil {
+		return errors.Wrap(err, "failed to add obsoletes")
+	}
+	if err := r.Suggests.AddToIndex(SuggestsCategory, h); err != nil {
+		return errors.Wrap(err, "failed to add suggests")
+	}
+	if err := r.Recommends.AddToIndex(RecommendsCategory, h); err != nil {
+		return errors.Wrap(err, "failed to add recommends")
+	}
+	if err := r.Requires.AddToIndex(RequiresCategory, h); err != nil {
+		return errors.Wrap(err, "failed to add requires")
+	}
+	if err := r.Conflicts.AddToIndex(ConflictsCategory, h); err != nil {
+		return errors.Wrap(err, "failed to add conflicts")
+	}
+
+	return nil
+}
+
 func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
@@ -218,14 +246,6 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagLicence, entry(r.Licence))
 	h.Add(tagPackager, entry(r.Packager))
 	h.Add(tagURL, entry(r.URL))
-
-	// add all relation categories
-	r.Provides.AddToIndex(ProvidesCategory, h)
-	r.Obsoletes.AddToIndex(ObsoletesCategory, h)
-	r.Suggests.AddToIndex(SuggestsCategory, h)
-	r.Recommends.AddToIndex(RecommendsCategory, h)
-	r.Requires.AddToIndex(RequiresCategory, h)
-	r.Conflicts.AddToIndex(ConflictsCategory, h)
 
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
