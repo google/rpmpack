@@ -22,12 +22,16 @@ const (
 	sigSize        = 0x03e8 // 1000
 	sigPayloadSize = 0x03ef // 1007
 
-	tagName    = 0x03e8 // 1000
-	tagVersion = 0x03e9 // 1001
-	tagRelease = 0x03ea // 1002
-	tagSize    = 0x03f1 // 1009
-	tagOS      = 0x03fd // 1021
-	tagArch    = 0x03fe // 1022
+	tagName     = 0x03e8 // 1000
+	tagVersion  = 0x03e9 // 1001
+	tagRelease  = 0x03ea // 1002
+	tagSize     = 0x03f1 // 1009
+	tagVendor   = 0x03f3 // 1011
+	tagLicence  = 0x03f6 // 1014
+	tagPackager = 0x03f7 // 1015
+	tagURL      = 0x03fc // 1020
+	tagOS       = 0x03fd // 1021
+	tagArch     = 0x03fe // 1022
 
 	tagPrein  = 0x03ff // 1023
 	tagPostin = 0x0400 // 1024

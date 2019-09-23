@@ -41,10 +41,16 @@ var (
 
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
-	Name       string
-	Version    string
-	Release    string
-	Arch       string
+	Name,
+	Description,
+	Version,
+	Release,
+	Arch,
+	OS,
+	Vendor,
+	URL,
+	Packager,
+	Licence,
 	Compressor string
 }
 
@@ -199,6 +205,13 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagPayloadFlags, entry("9"))
 	h.Add(tagOS, entry("linux"))
 	h.Add(tagArch, entry(r.Arch))
+	h.Add(tagOS, entry(r.OS))
+	h.Add(tagArch, entry(r.Arch))
+	h.Add(tagVendor, entry(r.Vendor))
+	h.Add(tagLicence, entry(r.Licence))
+	h.Add(tagPackager, entry(r.Packager))
+	h.Add(tagURL, entry(r.URL))
+
 	// A package must provide itself...
 	h.Add(tagProvides, entry([]string{r.Name}))
 	h.Add(tagProvideVersion, entry([]string{r.FullVersion()}))

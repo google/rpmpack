@@ -25,11 +25,17 @@ import (
 )
 
 var (
-	name       = flag.String("name", "", "the package name")
-	version    = flag.String("version", "", "the package version")
-	release    = flag.String("release", "", "the rpm release")
-	arch       = flag.String("arch", "noarch", "the rpm architecture")
-	compressor = flag.String("compressor", "gzip", "the rpm compressor")
+	name        = flag.String("name", "", "the package name")
+	version     = flag.String("version", "", "the package version")
+	release     = flag.String("release", "", "the rpm release")
+	arch        = flag.String("arch", "noarch", "the rpm architecture")
+	compressor  = flag.String("compressor", "gzip", "the rpm compressor")
+	osName      = flag.String("os", "linux", "the rpm os")
+	description = flag.String("description", "", "the rpm description")
+	vendor      = flag.String("vendor", "", "the rpm vendor")
+	packager    = flag.String("packager", "", "the rpm packager")
+	url         = flag.String("url", "", "the rpm url")
+	licence     = flag.String("licence", "", "the rpm licence name")
 
 	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
 	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
@@ -51,8 +57,8 @@ Options:
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-	if *name == "" || *version == "" || *release == "" {
-		fmt.Fprintln(os.Stderr, "name, version, and release are all required")
+	if *name == "" || *version == "" {
+		fmt.Fprintln(os.Stderr, "name and version are required")
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -91,6 +97,11 @@ func main() {
 			Version:    *version,
 			Release:    *release,
 			Arch:       *arch,
+			OS:         *osName,
+			Vendor:     *vendor,
+			Packager:   *packager,
+			URL:        *url,
+			Licence:    *licence,
 			Compressor: *compressor,
 		})
 	r.AddPrein(*prein)
