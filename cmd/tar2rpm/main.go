@@ -93,16 +93,17 @@ func main() {
 	r, err := rpmpack.FromTar(
 		i,
 		rpmpack.RPMMetaData{
-			Name:       *name,
-			Version:    *version,
-			Release:    *release,
-			Arch:       *arch,
-			OS:         *osName,
-			Vendor:     *vendor,
-			Packager:   *packager,
-			URL:        *url,
-			Licence:    *licence,
-			Compressor: *compressor,
+			Name:        *name,
+			Version:     *version,
+			Release:     *release,
+			Arch:        *arch,
+			OS:          *osName,
+			Vendor:      *vendor,
+			Packager:    *packager,
+			URL:         *url,
+			Licence:     *licence,
+			Description: *description,
+			Compressor:  *compressor,
 		})
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
