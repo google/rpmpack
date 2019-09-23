@@ -219,7 +219,6 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagPackager, entry(r.Packager))
 	h.Add(tagURL, entry(r.URL))
 
-
 	// add all relation categories
 	r.Provides.AddToIndex(ProvidesCategory, h)
 	r.Obsoletes.AddToIndex(ObsoletesCategory, h)

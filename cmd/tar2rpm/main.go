@@ -116,12 +116,12 @@ func main() {
 			Licence:     *licence,
 			Description: *description,
 			Compressor:  *compressor,
-			Provides:   provides,
-			Obsoletes:  obsoletes,
-			Suggests:   suggests,
-			Recommends: recommends,
-			Requires:   requires,
-			Conflicts:  conflicts,
+			Provides:    provides,
+			Obsoletes:   obsoletes,
+			Suggests:    suggests,
+			Recommends:  recommends,
+			Requires:    requires,
+			Conflicts:   conflicts,
 		})
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
