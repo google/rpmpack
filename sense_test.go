@@ -1,6 +1,7 @@
 package rpmpack
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -55,13 +56,21 @@ func TestNewRelation(t *testing.T) {
 	for _, tc := range testCases {
 		testCase := tc
 		t.Run(testCase.input, func(tt *testing.T) {
+			fmt.Println(testCase.input)
 			relation, err := NewRelation(testCase.input)
-			if testCase.errExpected && err == nil {
+			switch {
+			case testCase.errExpected && err == nil:
 				tt.Errorf("%s should have returned an error", testCase.input)
 				return
-			}
-			if !testCase.errExpected && err != nil {
+			case !testCase.errExpected && err != nil:
 				tt.Errorf("%s should not have returned an error: %v", testCase.input, err)
+				return
+			case testCase.errExpected && err != nil:
+				return
+			}
+
+			if relation == nil {
+				tt.Errorf("%s should not have returned a nil relation", testCase.input)
 				return
 			}
 
