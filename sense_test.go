@@ -1,14 +1,13 @@
 package rpmpack
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestNewRelation(t *testing.T) {
 	testCases := []struct {
-		name, input, output string
-		errExpected         bool
+		input, output string
+		errExpected   bool
 	}{
 		{
 			input:  "python >= 3.7",
@@ -66,7 +65,7 @@ func TestNewRelation(t *testing.T) {
 				return
 			}
 
-			var val = fmt.Sprintf("%s", relation)
+			val := relation.String()
 			if !testCase.errExpected && val != testCase.output {
 				tt.Errorf("%s should have returned %s not %s", testCase.input, testCase.output, val)
 			}
