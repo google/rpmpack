@@ -52,6 +52,12 @@ type RPMMetaData struct {
 	Packager,
 	Licence,
 	Compressor string
+	Provides,
+	Obsoletes,
+	Suggests,
+	Recommends,
+	Requires,
+	Conflicts Relations
 }
 
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
@@ -102,14 +108,24 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create compression writer")
 	}
-	return &RPM{
+
+	rpm := &RPM{
 		RPMMetaData:       m,
 		di:                newDirIndex(),
 		payload:           p,
 		compressedPayload: z,
 		cpio:              cpio.NewWriter(z),
 		files:             make(map[string]RPMFile),
-	}, nil
+	}
+
+	// A package must provide itself...
+	rpm.Provides.addIfMissing(&Relation{
+		Name:    rpm.Name,
+		Version: rpm.FullVersion(),
+		Sense:   SenseEqual,
+	})
+
+	return rpm, nil
 }
 
 // FullVersion properly combines version and release fields to a version string
@@ -203,10 +219,15 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagPackager, entry(r.Packager))
 	h.Add(tagURL, entry(r.URL))
 
-	// A package must provide itself...
-	h.Add(tagProvides, entry([]string{r.Name}))
-	h.Add(tagProvideVersion, entry([]string{r.FullVersion()}))
-	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
+
+	// add all relation categories
+	r.Provides.AddToIndex(ProvidesCategory, h)
+	r.Obsoletes.AddToIndex(ObsoletesCategory, h)
+	r.Suggests.AddToIndex(SuggestsCategory, h)
+	r.Recommends.AddToIndex(RecommendsCategory, h)
+	r.Requires.AddToIndex(RequiresCategory, h)
+	r.Conflicts.AddToIndex(ConflictsCategory, h)
+
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))

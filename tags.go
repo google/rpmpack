@@ -50,14 +50,23 @@ const (
 	tagSourceRPM         = 0x0414 // 1044
 	tagFileVerifyFlags   = 0x0415 // 1045
 	tagProvides          = 0x0417 // 1047
+	tagRequireFlags      = 0x0418 // 1048
+	tagRequires          = 0x0419 // 1049
+	tagRequireVersion    = 0x041a // 1050
+	tagConflictFlags     = 0x041d // 1053
+	tagConflicts         = 0x041e // 1054
+	tagConflictVersion   = 0x041f // 1055
 	tagPreinProg         = 0x043d // 1085
 	tagPostinProg        = 0x043e // 1086
 	tagPreunProg         = 0x043f // 1087
 	tagPostunProg        = 0x0440 // 1088
+	tagObsoletes         = 0x0442 // 1090
 	tagFileINodes        = 0x0448 // 1096
 	tagFileLangs         = 0x0449 // 1097
 	tagProvideFlags      = 0x0458 // 1112
 	tagProvideVersion    = 0x0459 // 1113
+	tagObsoleteFlags     = 0x045a // 1114
+	tagObsoleteVersion   = 0x045b // 1115
 	tagDirindexes        = 0x045c // 1116
 	tagBasenames         = 0x045d // 1117
 	tagDirnames          = 0x045e // 1118
@@ -65,4 +74,10 @@ const (
 	tagPayloadCompressor = 0x0465 // 1125
 	tagPayloadFlags      = 0x0466 // 1126
 	tagFileDigestAlgo    = 0x1393 // 5011
+	tagRecommends        = 0x13b6 // 5046
+	tagRecommendVersion  = 0x13b7 // 5047
+	tagRecommendFlags    = 0x13b8 // 5048
+	tagSuggests          = 0x13b9 // 5049
+	tagSuggestVersion    = 0x13ba // 5050
+	tagSuggestFlags      = 0x13bb // 5051
 )

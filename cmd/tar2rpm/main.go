@@ -25,6 +25,12 @@ import (
 )
 
 var (
+	provides,
+	obsoletes,
+	suggests,
+	recommends,
+	requires,
+	conflicts rpmpack.Relations
 	name        = flag.String("name", "", "the package name")
 	version     = flag.String("version", "", "the package version")
 	release     = flag.String("release", "", "the rpm release")
@@ -55,6 +61,12 @@ Options:
 }
 
 func main() {
+	flag.Var(&provides, "provides", "rpm provides values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&obsoletes, "obsoletes", "rpm obsoletes values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&suggests, "suggests", "rpm suggests values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&recommends, "recommends", "rpm recommends values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&requires, "requires", "rpm requires values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&conflicts, "conflicts", "rpm provides values, can be just name or in the form of name=version (eg. bla=1.2.3)")
 	flag.Usage = usage
 	flag.Parse()
 	if *name == "" || *version == "" {
@@ -104,6 +116,12 @@ func main() {
 			Licence:     *licence,
 			Description: *description,
 			Compressor:  *compressor,
+			Provides:   provides,
+			Obsoletes:  obsoletes,
+			Suggests:   suggests,
+			Recommends: recommends,
+			Requires:   requires,
+			Conflicts:  conflicts,
 		})
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
