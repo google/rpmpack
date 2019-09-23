@@ -17,6 +17,7 @@ go_library(
         "tags.go",
         "tar.go",
         "file_types.go",
+        "sense.go"
     ],
     importpath = "github.com/google/rpmpack",
     visibility = ["//visibility:public"],
@@ -35,6 +36,7 @@ go_test(
         "header_test.go",
         "tar_test.go",
         "file_types_test.go",
+        "sense_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":go_default_library"],
