@@ -207,22 +207,22 @@ func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
 
 func (r *RPM) writeRelationIndexes(h *index) error {
 	// add all relation categories
-	if err := r.Provides.AddToIndex(ProvidesCategory, h); err != nil {
+	if err := r.Provides.AddToIndex(h, tagProvides, tagProvideVersion, tagProvideFlags); err != nil {
 		return errors.Wrap(err, "failed to add provides")
 	}
-	if err := r.Obsoletes.AddToIndex(ObsoletesCategory, h); err != nil {
+	if err := r.Obsoletes.AddToIndex(h, tagObsoletes, tagObsoleteVersion, tagObsoleteFlags); err != nil {
 		return errors.Wrap(err, "failed to add obsoletes")
 	}
-	if err := r.Suggests.AddToIndex(SuggestsCategory, h); err != nil {
+	if err := r.Suggests.AddToIndex(h, tagSuggests, tagSuggestVersion, tagSuggestFlags); err != nil {
 		return errors.Wrap(err, "failed to add suggests")
 	}
-	if err := r.Recommends.AddToIndex(RecommendsCategory, h); err != nil {
+	if err := r.Recommends.AddToIndex(h, tagRecommends, tagRecommendVersion, tagRecommendFlags); err != nil {
 		return errors.Wrap(err, "failed to add recommends")
 	}
-	if err := r.Requires.AddToIndex(RequiresCategory, h); err != nil {
+	if err := r.Requires.AddToIndex(h, tagRequires, tagRequireVersion, tagRequireFlags); err != nil {
 		return errors.Wrap(err, "failed to add requires")
 	}
-	if err := r.Conflicts.AddToIndex(ConflictsCategory, h); err != nil {
+	if err := r.Conflicts.AddToIndex(h, tagConflicts, tagConflictVersion, tagConflictFlags); err != nil {
 		return errors.Wrap(err, "failed to add conflicts")
 	}
 

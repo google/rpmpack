@@ -1,7 +1,6 @@
 package rpmpack
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -56,7 +55,6 @@ func TestNewRelation(t *testing.T) {
 	for _, tc := range testCases {
 		testCase := tc
 		t.Run(testCase.input, func(tt *testing.T) {
-			fmt.Println(testCase.input)
 			relation, err := NewRelation(testCase.input)
 			switch {
 			case testCase.errExpected && err == nil:

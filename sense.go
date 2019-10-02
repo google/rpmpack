@@ -12,24 +12,13 @@ type rpmSense uint32
 // SenseGreater specifies greater then the specified version
 // SenseEqual specifies equal to the specified version
 const (
-	SenseAny  rpmSense = 0
-	SenseLess rpmSense = 1 << iota
+	SenseAny rpmSense = 1 << iota >> 1
+	SenseLess
 	SenseGreater
 	SenseEqual
 )
 
-type relationCategory string
-
-const (
-	RequiresCategory   relationCategory = "requires"
-	ObsoletesCategory  relationCategory = "obsoletes"
-	SuggestsCategory   relationCategory = "suggests"
-	RecommendsCategory relationCategory = "recommends"
-	ConflictsCategory  relationCategory = "conflicts"
-	ProvidesCategory   relationCategory = "provides"
-)
-
-var relationMatch = regexp.MustCompile(`([^=<>\s]*)\s*((?:=|>|<|>=|<=)*)\s*(.*)?`)
+var relationMatch = regexp.MustCompile(`([^=<>\s]*)\s*((?:=|>|<)*)\s*(.*)?`)
 
 // Relation is the structure of rpm sense relationships
 type Relation struct {
@@ -43,14 +32,9 @@ func (r *Relation) String() string {
 	return fmt.Sprintf("%s%v%s", r.Name, r.Sense, r.Version)
 }
 
-// GoString return the string representation of the Relation
-func (r *Relation) GoString() string {
-	return r.String()
-}
-
 // Equal compare the equality of two relations
 func (r *Relation) Equal(o *Relation) bool {
-	return r.String() == o.String()
+	return r.Name == o.Name && r.Version == o.Version && r.Sense == o.Sense
 }
 
 // Relations is a slice of Relation pointers
@@ -71,11 +55,6 @@ func (r *Relations) String() string {
 	}
 
 	return val
-}
-
-// GoString return the string representation of the Relations
-func (r *Relations) GoString() string {
-	return r.String()
 }
 
 // Set parse a string into a Relation and append it to the Relations slice if it is missing
@@ -101,11 +80,8 @@ func (r *Relations) addIfMissing(value *Relation) {
 }
 
 // AddToIndex add the relations to the specified category on the index
-func (r *Relations) AddToIndex(category relationCategory, h *index) error {
+func (r *Relations) AddToIndex(h *index, nameTag, versionTag, flagsTag int) error {
 	var (
-		nameTag,
-		versionTag,
-		flagsTag int
 		num      = len(*r)
 		names    = make([]string, num)
 		versions = make([]string, num)
@@ -114,35 +90,6 @@ func (r *Relations) AddToIndex(category relationCategory, h *index) error {
 
 	if num == 0 {
 		return nil
-	}
-
-	switch category {
-	case ProvidesCategory:
-		nameTag = tagProvides
-		versionTag = tagProvideVersion
-		flagsTag = tagProvideFlags
-	case RequiresCategory:
-		nameTag = tagRequires
-		versionTag = tagRequireVersion
-		flagsTag = tagRequireFlags
-	case ObsoletesCategory:
-		nameTag = tagObsoletes
-		versionTag = tagObsoleteVersion
-		flagsTag = tagObsoleteFlags
-	case SuggestsCategory:
-		nameTag = tagSuggests
-		versionTag = tagSuggestVersion
-		flagsTag = tagSuggestFlags
-	case RecommendsCategory:
-		nameTag = tagRecommends
-		versionTag = tagRecommendVersion
-		flagsTag = tagRecommendFlags
-	case ConflictsCategory:
-		nameTag = tagConflicts
-		versionTag = tagConflictVersion
-		flagsTag = tagConflictFlags
-	default:
-		return fmt.Errorf("unknown category %s", category)
 	}
 
 	for idx := range *r {
@@ -177,44 +124,39 @@ func NewRelation(related string) (*Relation, error) {
 	}, nil
 }
 
-var senseStrings = map[rpmSense]string{
-	SenseAny:                  "",
-	SenseLess:                 "<",
-	SenseGreater:              ">",
-	SenseEqual:                "=",
-	SenseLess | SenseEqual:    "<=",
-	SenseGreater | SenseEqual: ">=",
+var stringToSense = map[string]rpmSense{
+	"":   SenseAny,
+	"<":  SenseLess,
+	">":  SenseGreater,
+	"=":  SenseEqual,
+	"<=": SenseLess | SenseEqual,
+	">=": SenseGreater | SenseEqual,
 }
 
 // String return the string representation of the rpmSense
 func (r rpmSense) String() string {
 	var (
-		ok  bool
+		val rpmSense
 		ret string
 	)
 
-	if ret, ok = senseStrings[r]; !ok {
-		return "UNKNOWN"
+	for ret, val = range stringToSense {
+		if r == val {
+			return ret
+		}
 	}
 
-	return ret
-}
-
-// GoString return the string representation of the rpmSense
-func (r rpmSense) GoString() string {
-	return r.String()
+	return "unknown"
 }
 
 func parseSense(sense string) (rpmSense, error) {
 	var (
-		ret     rpmSense
-		toMatch string
+		ret rpmSense
+		ok  bool
 	)
-	for ret, toMatch = range senseStrings {
-		if sense == toMatch {
-			return ret, nil
-		}
+	if ret, ok = stringToSense[sense]; !ok {
+		return SenseAny, fmt.Errorf("unknown sense value: %s", sense)
 	}
 
-	return ret, fmt.Errorf("unknown sense value")
+	return ret, nil
 }

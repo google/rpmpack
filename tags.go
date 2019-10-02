@@ -15,6 +15,7 @@
 package rpmpack
 
 // Define only tags which we actually use
+// https://github.com/rpm-software-management/rpm/blob/master/lib/rpmtag.h
 const (
 	tagHeaderI18NTable = 0x64 // 100
 	// Signature tags are obiously overlapping regular header tags..
