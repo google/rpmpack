@@ -13,7 +13,7 @@ func TestFileTypeSetting(t *testing.T) {
 		t.Error("New RPMFile.Type should be a generic type")
 	}
 
-	f.ConfigFile()
+	f.Type |= ConfigFile
 	if (f.Type & ConfigFile) == 0 {
 		t.Error("Setting to config file should have the ConfigFile bitmask")
 	}
@@ -24,7 +24,7 @@ func TestFileTypeCombining(t *testing.T) {
 		Name: "Test",
 	}
 
-	f.ConfigFile().NoReplaceFile()
+	f.Type |= ConfigFile | NoReplaceFile
 
 	if (f.Type&ConfigFile) == 0 || f.Type&NoReplaceFile == 0 {
 		t.Error("Combining file types should have the bitmask of both")
