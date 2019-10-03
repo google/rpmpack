@@ -85,8 +85,7 @@ func (r *Relations) AddToIndex(h *index, nameTag, versionTag, flagsTag int) erro
 		return nil
 	}
 
-	for idx := range *r {
-		relation := (*r)[idx]
+	for idx, relation := range *r {
 		names[idx] = relation.Name
 		versions[idx] = relation.Version
 		flags[idx] = uint32(relation.Sense)
