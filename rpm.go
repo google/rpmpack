@@ -52,6 +52,12 @@ type RPMMetaData struct {
 	Packager,
 	Licence,
 	Compressor string
+	Provides,
+	Obsoletes,
+	Suggests,
+	Recommends,
+	Requires,
+	Conflicts Relations
 }
 
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
@@ -102,14 +108,24 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create compression writer")
 	}
-	return &RPM{
+
+	rpm := &RPM{
 		RPMMetaData:       m,
 		di:                newDirIndex(),
 		payload:           p,
 		compressedPayload: z,
 		cpio:              cpio.NewWriter(z),
 		files:             make(map[string]RPMFile),
-	}, nil
+	}
+
+	// A package must provide itself...
+	rpm.Provides.addIfMissing(&Relation{
+		Name:    rpm.Name,
+		Version: rpm.FullVersion(),
+		Sense:   SenseEqual,
+	})
+
+	return rpm, nil
 }
 
 // FullVersion properly combines version and release fields to a version string
@@ -151,6 +167,10 @@ func (r *RPM) Write(w io.Writer) error {
 	h := newIndex(immutable)
 	r.writeGenIndexes(h)
 	r.writeFileIndexes(h)
+	if err := r.writeRelationIndexes(h); err != nil {
+		return err
+	}
+
 	hb, err := h.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve header")
@@ -185,6 +205,30 @@ func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
 	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
 }
 
+func (r *RPM) writeRelationIndexes(h *index) error {
+	// add all relation categories
+	if err := r.Provides.AddToIndex(h, tagProvides, tagProvideVersion, tagProvideFlags); err != nil {
+		return errors.Wrap(err, "failed to add provides")
+	}
+	if err := r.Obsoletes.AddToIndex(h, tagObsoletes, tagObsoleteVersion, tagObsoleteFlags); err != nil {
+		return errors.Wrap(err, "failed to add obsoletes")
+	}
+	if err := r.Suggests.AddToIndex(h, tagSuggests, tagSuggestVersion, tagSuggestFlags); err != nil {
+		return errors.Wrap(err, "failed to add suggests")
+	}
+	if err := r.Recommends.AddToIndex(h, tagRecommends, tagRecommendVersion, tagRecommendFlags); err != nil {
+		return errors.Wrap(err, "failed to add recommends")
+	}
+	if err := r.Requires.AddToIndex(h, tagRequires, tagRequireVersion, tagRequireFlags); err != nil {
+		return errors.Wrap(err, "failed to add requires")
+	}
+	if err := r.Conflicts.AddToIndex(h, tagConflicts, tagConflictVersion, tagConflictFlags); err != nil {
+		return errors.Wrap(err, "failed to add conflicts")
+	}
+
+	return nil
+}
+
 func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
@@ -203,10 +247,6 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagPackager, entry(r.Packager))
 	h.Add(tagURL, entry(r.URL))
 
-	// A package must provide itself...
-	h.Add(tagProvides, entry([]string{r.Name}))
-	h.Add(tagProvideVersion, entry([]string{r.FullVersion()}))
-	h.Add(tagProvideFlags, entry([]uint32{uint32(1 << 3)})) // means "="
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
