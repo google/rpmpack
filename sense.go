@@ -48,7 +48,7 @@ func (r *Relations) String() string {
 	)
 
 	for idx, relation := range *r {
-		val += fmt.Sprintf("%s%v%s", relation.Name, relation.Sense, relation.Version)
+		val += relation.String()
 		if idx < total-1 {
 			val += ","
 		}
