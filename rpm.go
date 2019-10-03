@@ -194,10 +194,16 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagPayloadFormat, entry("cpio"))
 	h.Add(tagPayloadCompressor, entry(r.Compressor))
 	h.Add(tagPayloadFlags, entry("9"))
-	h.Add(tagOS, entry("linux"))
-	h.Add(tagArch, entry(r.Arch))
-	h.Add(tagOS, entry(r.OS))
-	h.Add(tagArch, entry(r.Arch))
+	if r.Arch != "" {
+		h.Add(tagArch, entry(r.Arch))
+	} else {
+		h.Add(tagArch, entry("noarch"))
+	}
+	if r.OS != "" {
+		h.Add(tagOS, entry(r.OS))
+	} else {
+		h.Add(tagOS, entry("linux"))
+	}
 	h.Add(tagVendor, entry(r.Vendor))
 	h.Add(tagLicence, entry(r.Licence))
 	h.Add(tagPackager, entry(r.Packager))
