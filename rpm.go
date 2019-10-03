@@ -54,16 +54,6 @@ type RPMMetaData struct {
 	Compressor string
 }
 
-// RPMFile contains a particular file's entry and data.
-type RPMFile struct {
-	Name  string
-	Body  []byte
-	Mode  uint
-	Owner string
-	Group string
-	MTime uint32
-}
-
 // RPM holds the state of a particular rpm file. Please use NewRPM to instantiate it.
 type RPM struct {
 	RPMMetaData
@@ -80,6 +70,7 @@ type RPM struct {
 	filemtimes        []uint32
 	filedigests       []string
 	filelinktos       []string
+	fileflags         []uint32
 	closed            bool
 	compressedPayload io.WriteCloser
 	files             map[string]RPMFile
@@ -249,11 +240,11 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileMTimes, entry(r.filemtimes))
 	h.Add(tagFileDigests, entry(r.filedigests))
 	h.Add(tagFileLinkTos, entry(r.filelinktos))
+	h.Add(tagFileFlags, entry(r.fileflags))
 
 	inodes := make([]int32, len(r.dirindexes))
 	digestAlgo := make([]int32, len(r.dirindexes))
 	verifyFlags := make([]int32, len(r.dirindexes))
-	fileFlags := make([]int32, len(r.dirindexes))
 	fileRDevs := make([]int16, len(r.dirindexes))
 	fileLangs := make([]string, len(r.dirindexes))
 
@@ -264,13 +255,11 @@ func (r *RPM) writeFileIndexes(h *index) {
 		digestAlgo[ii] = int32(8)
 		// With regular files, it seems like we can always enable all of the verify flags
 		verifyFlags[ii] = int32(-1)
-		fileFlags[ii] = int32(0)
 		fileRDevs[ii] = int16(1)
 	}
 	h.Add(tagFileINodes, entry(inodes))
 	h.Add(tagFileDigestAlgo, entry(digestAlgo))
 	h.Add(tagFileVerifyFlags, entry(verifyFlags))
-	h.Add(tagFileFlags, entry(fileFlags))
 	h.Add(tagFileRDevs, entry(fileRDevs))
 	h.Add(tagFileLangs, entry(fileLangs))
 }
@@ -311,6 +300,8 @@ func (r *RPM) writeFile(f RPMFile) error {
 	r.fileowners = append(r.fileowners, f.Group)
 	r.filegroups = append(r.filegroups, f.Owner)
 	r.filemtimes = append(r.filemtimes, f.MTime)
+	r.fileflags = append(r.fileflags, uint32(f.Type))
+
 	links := 1
 	switch {
 	case f.Mode&040000 != 0: // directory
