@@ -27,11 +27,6 @@ type Relation struct {
 	Sense   rpmSense
 }
 
-// String return the string representation of the Relation
-func (r *Relation) String() string {
-	return fmt.Sprintf("%s%v%s", r.Name, r.Sense, r.Version)
-}
-
 // Equal compare the equality of two relations
 func (r *Relation) Equal(o *Relation) bool {
 	return r.Name == o.Name && r.Version == o.Version && r.Sense == o.Sense
@@ -39,23 +34,6 @@ func (r *Relation) Equal(o *Relation) bool {
 
 // Relations is a slice of Relation pointers
 type Relations []*Relation
-
-// String return the string representation of the Relations
-func (r *Relations) String() string {
-	var (
-		val   string
-		total = len(*r)
-	)
-
-	for idx, relation := range *r {
-		val += fmt.Sprintf("%s%v%s", relation.Name, relation.Sense, relation.Version)
-		if idx < total-1 {
-			val += ","
-		}
-	}
-
-	return val
-}
 
 // Set parse a string into a Relation and append it to the Relations slice if it is missing
 // this is used by the flag package

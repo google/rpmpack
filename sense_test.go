@@ -1,6 +1,7 @@
 package rpmpack
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -72,7 +73,7 @@ func TestNewRelation(t *testing.T) {
 				return
 			}
 
-			val := relation.String()
+			val := fmt.Sprintf("%s%v%s", relation.Name, relation.Sense, relation.Version)
 			if !testCase.errExpected && val != testCase.output {
 				tt.Errorf("%s should have returned %s not %s", testCase.input, testCase.output, val)
 			}
