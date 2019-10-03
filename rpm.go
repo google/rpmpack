@@ -84,6 +84,10 @@ type RPM struct {
 func NewRPM(m RPMMetaData) (*RPM, error) {
 	var err error
 
+	if m.OS == "" {
+		m.OS = "linux"
+	}
+
 	p := &bytes.Buffer{}
 	var z io.WriteCloser
 	switch m.Compressor {
@@ -194,7 +198,6 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagPayloadFormat, entry("cpio"))
 	h.Add(tagPayloadCompressor, entry(r.Compressor))
 	h.Add(tagPayloadFlags, entry("9"))
-	h.Add(tagOS, entry("linux"))
 	h.Add(tagArch, entry(r.Arch))
 	h.Add(tagOS, entry(r.OS))
 	h.Add(tagArch, entry(r.Arch))
