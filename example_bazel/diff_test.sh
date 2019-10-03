@@ -33,13 +33,5 @@ diff_test () {
   return 0
 }
 
-diff_test centos_V golden_V.txt
-V_result="$?"
-diff_test centos_ls golden_ls.txt
-ls_result="$?"
-diff_test centos_preinst golden_preinst.txt
-preinst_result="$?"
-
-if [[ "$V_result" -ne 0 || "$ls_result" -ne 0 || "$preinst_result" -ne 0 ]]; then
-  exit 1
-fi
+diff_test {CMD} {GOLDEN}
+exit $?
