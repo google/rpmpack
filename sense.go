@@ -3,6 +3,7 @@ package rpmpack
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 type rpmSense uint32
@@ -42,19 +43,11 @@ type Relations []*Relation
 
 // String return the string representation of the Relations
 func (r *Relations) String() string {
-	var (
-		val   string
-		total = len(*r)
-	)
-
-	for idx, relation := range *r {
-		val += relation.String()
-		if idx < total-1 {
-			val += ","
-		}
+	var val []string
+	for _, rel := range *r {
+		val = append(val, rel.String())
 	}
-
-	return val
+	return strings.Join(val, ",")
 }
 
 // Set parse a string into a Relation and append it to the Relations slice if it is missing
