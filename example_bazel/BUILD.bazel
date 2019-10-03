@@ -53,3 +53,18 @@ docker_diff(
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && cat /tmp/preinst.txt",
     golden = ":golden_preinst.txt",
 )
+
+container_image(
+    name = "fedora_with_rpm",
+    testonly = True,
+    base = "@fedora//image",
+    directory = "/root/",
+    files = [":rpmtest.rpm"],
+    legacy_run_behavior = False,
+)
+docker_diff(
+    name = "fedora_V",
+    base = ":fedora_with_rpm",
+    cmd = "echo ===marker===  && rpm --nodigest -i /root/rpmtest.rpm && rpm -Vv rpmtest",
+    golden = ":golden_V.txt",
+)

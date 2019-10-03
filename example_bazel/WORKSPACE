@@ -67,3 +67,9 @@ container_pull(
     registry = "index.docker.io",
     repository = "library/centos",
 )
+container_pull(
+    name = "fedora",
+    digest = "sha256:3f3fc6a4714e44fae9147bc2b9542ac627491c13c4a3375e5066bdddc7710c9e",
+    registry = "index.docker.io",
+    repository = "library/fedora",
+)
