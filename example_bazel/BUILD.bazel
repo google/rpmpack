@@ -65,6 +65,6 @@ container_image(
 docker_diff(
     name = "fedora_V",
     base = ":fedora_with_rpm",
-    cmd = "echo ===marker===  && rpm --nodigest -i /root/rpmtest.rpm && rpm -Vv rpmtest",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -Vv rpmtest",
     golden = ":golden_V.txt",
 )

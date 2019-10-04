@@ -23,6 +23,9 @@ const (
 	sigSize        = 0x03e8 // 1000
 	sigPayloadSize = 0x03ef // 1007
 
+	// https://github.com/rpm-software-management/rpm/blob/92eadae94c48928bca90693ad63c46ceda37d81f/rpmio/rpmpgp.h#L258
+	hashAlgoSHA256 = 0x0008 // 8
+
 	tagName     = 0x03e8 // 1000
 	tagVersion  = 0x03e9 // 1001
 	tagRelease  = 0x03ea // 1002
@@ -81,4 +84,6 @@ const (
 	tagSuggests          = 0x13b9 // 5049
 	tagSuggestVersion    = 0x13ba // 5050
 	tagSuggestFlags      = 0x13bb // 5051
+	tagPayloadDigest     = 0x13e4 // 5092
+	tagPayloadDigestAlgo = 0x13e5 // 5093
 )
