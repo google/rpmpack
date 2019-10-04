@@ -62,6 +62,7 @@ container_image(
     files = [":rpmtest.rpm"],
     legacy_run_behavior = False,
 )
+
 docker_diff(
     name = "fedora_V",
     base = ":fedora_with_rpm",
