@@ -33,6 +33,7 @@ const (
 	tagVendor   = 0x03f3 // 1011
 	tagLicence  = 0x03f6 // 1014
 	tagPackager = 0x03f7 // 1015
+	tagGroup    = 0x03f8 // 1016
 	tagURL      = 0x03fc // 1020
 	tagOS       = 0x03fd // 1021
 	tagArch     = 0x03fe // 1022

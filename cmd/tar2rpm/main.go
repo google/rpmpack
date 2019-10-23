@@ -40,6 +40,7 @@ var (
 	description = flag.String("description", "", "the rpm description")
 	vendor      = flag.String("vendor", "", "the rpm vendor")
 	packager    = flag.String("packager", "", "the rpm packager")
+	group       = flag.String("group", "", "the rpm group")
 	url         = flag.String("url", "", "the rpm url")
 	licence     = flag.String("licence", "", "the rpm licence name")
 
@@ -112,6 +113,7 @@ func main() {
 			OS:          *osName,
 			Vendor:      *vendor,
 			Packager:    *packager,
+			Group:       *group,
 			URL:         *url,
 			Licence:     *licence,
 			Description: *description,

@@ -50,6 +50,7 @@ type RPMMetaData struct {
 	Vendor,
 	URL,
 	Packager,
+	Group,
 	Licence,
 	Compressor string
 	Provides,
@@ -251,6 +252,7 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagVendor, entry(r.Vendor))
 	h.Add(tagLicence, entry(r.Licence))
 	h.Add(tagPackager, entry(r.Packager))
+	h.Add(tagGroup, entry(r.Group))
 	h.Add(tagURL, entry(r.URL))
 	h.Add(tagPayloadDigest, entry([]string{fmt.Sprintf("%x", sha256.Sum256(r.payload.Bytes()))}))
 	h.Add(tagPayloadDigestAlgo, entry([]int32{hashAlgoSHA256}))
