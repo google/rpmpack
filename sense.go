@@ -8,13 +8,13 @@ import (
 
 type rpmSense uint32
 
-// SenseAny specifies no specific version compare
-// SenseLess specifies less then the specified version
-// SenseGreater specifies greater then the specified version
-// SenseEqual specifies equal to the specified version
+// SenseAny (0) specifies no specific version compare
+// SenseLess (2) specifies less then the specified version
+// SenseGreater (4) specifies greater then the specified version
+// SenseEqual (8) specifies equal to the specified version
 const (
-	SenseAny rpmSense = 1 << iota >> 1
-	SenseLess
+	SenseAny  rpmSense = 0
+	SenseLess          = 1 << iota
 	SenseGreater
 	SenseEqual
 )
