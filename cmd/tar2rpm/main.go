@@ -33,16 +33,17 @@ var (
 	conflicts rpmpack.Relations
 	name        = flag.String("name", "", "the package name")
 	version     = flag.String("version", "", "the package version")
-	release     = flag.String("release", "", "the rpm release")
+	release     = flag.String("release", "1", "the rpm release")
 	arch        = flag.String("arch", "noarch", "the rpm architecture")
 	compressor  = flag.String("compressor", "gzip", "the rpm compressor")
 	osName      = flag.String("os", "linux", "the rpm os")
+	summary     = flag.String("summary", "", "the rpm summary")
 	description = flag.String("description", "", "the rpm description")
 	vendor      = flag.String("vendor", "", "the rpm vendor")
 	packager    = flag.String("packager", "", "the rpm packager")
-	group       = flag.String("group", "", "the rpm group")
+	group       = flag.String("group", "Development/Tools", "the rpm group")
 	url         = flag.String("url", "", "the rpm url")
-	licence     = flag.String("licence", "", "the rpm licence name")
+	licence     = flag.String("licence", "UNKNOWN", "the rpm licence name")
 
 	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
 	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
@@ -117,6 +118,7 @@ func main() {
 			URL:         *url,
 			Licence:     *licence,
 			Description: *description,
+			Summary:     *summary,
 			Compressor:  *compressor,
 			Provides:    provides,
 			Obsoletes:   obsoletes,

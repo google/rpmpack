@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
+	"strings"
 )
 
 var (
@@ -42,6 +43,7 @@ var (
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
 	Name,
+	Summary,
 	Description,
 	Version,
 	Release,
@@ -86,20 +88,41 @@ type RPM struct {
 	preun             string
 	postun            string
 	sigIndex,
-	normalIndex *index
+	payloadIndex *index
+}
+
+func defaultMetaData(m *RPMMetaData) {
+	if m.OS == "" {
+		m.OS = "linux"
+	}
+	if m.Arch == "" {
+		m.Arch = "noarch"
+	}
+	if m.Description == "" {
+		m.Description = m.Name
+	}
+	if m.Summary == "" {
+		m.Summary = strings.Split(m.Description, "\n")[0]
+	}
+	if m.Version == "" {
+		m.Version = "0.0.0"
+	}
+	if m.Release == "" {
+		m.Release = "1"
+	}
+	if m.Group == "" {
+		m.Group = "Development/Tools"
+	}
+	if m.Licence == "" {
+		m.Licence = "UNKNOWN"
+	}
 }
 
 // NewRPM creates and returns a new RPM struct.
 func NewRPM(m RPMMetaData) (*RPM, error) {
 	var err error
 
-	if m.OS == "" {
-		m.OS = "linux"
-	}
-
-	if m.Arch == "" {
-		m.Arch = "noarch"
-	}
+	defaultMetaData(&m)
 
 	p := &bytes.Buffer{}
 	var z io.WriteCloser
@@ -127,7 +150,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		compressedPayload: z,
 		cpio:              cpio.NewWriter(z),
 		files:             make(map[string]RPMFile),
-		normalIndex:       newIndex(immutable),
+		payloadIndex:      newIndex(immutable),
 		sigIndex:          newIndex(signatures),
 	}
 
@@ -152,7 +175,7 @@ func (r *RPM) FullVersion() string {
 
 // AddTag a tag to the normal index of the rpm
 func (r *RPM) AddTag(rpmTag int, value *IndexEntry) {
-	r.normalIndex.Add(rpmTag, value)
+	r.payloadIndex.Add(rpmTag, value)
 }
 
 // AddSignatureTag a tag to the signature index of the rpm
@@ -182,7 +205,7 @@ func (r *RPM) WriteSignatures() error {
 		sigPayloadSizeEntry *IndexEntry
 	)
 
-	regHeader, err := r.normalIndex.Bytes()
+	regHeader, err := r.payloadIndex.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve header")
 	}
@@ -233,11 +256,15 @@ func (r *RPM) WriteCustom(w io.Writer) error {
 		return ErrWriteAfterClose
 	}
 
+	if err := r.VerifyRequiredTags(); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(lead(r.Name, r.FullVersion())); err != nil {
 		return errors.Wrap(err, "failed to write lead")
 	}
 
-	hb, err := r.normalIndex.Bytes()
+	hb, err := r.payloadIndex.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve header")
 	}
@@ -264,22 +291,22 @@ func (r *RPM) WriteCustom(w io.Writer) error {
 // WriteRelationIndexes write the relation sense indexes
 func (r *RPM) WriteRelationIndexes() error {
 	// add all relation categories
-	if err := r.Provides.AddToIndex(r.normalIndex, tagProvides, tagProvideVersion, tagProvideFlags); err != nil {
+	if err := r.Provides.AddToIndex(r.payloadIndex, tagProvides, tagProvideVersion, tagProvideFlags); err != nil {
 		return errors.Wrap(err, "failed to add provides")
 	}
-	if err := r.Obsoletes.AddToIndex(r.normalIndex, tagObsoletes, tagObsoleteVersion, tagObsoleteFlags); err != nil {
+	if err := r.Obsoletes.AddToIndex(r.payloadIndex, tagObsoletes, tagObsoleteVersion, tagObsoleteFlags); err != nil {
 		return errors.Wrap(err, "failed to add obsoletes")
 	}
-	if err := r.Suggests.AddToIndex(r.normalIndex, tagSuggests, tagSuggestVersion, tagSuggestFlags); err != nil {
+	if err := r.Suggests.AddToIndex(r.payloadIndex, tagSuggests, tagSuggestVersion, tagSuggestFlags); err != nil {
 		return errors.Wrap(err, "failed to add suggests")
 	}
-	if err := r.Recommends.AddToIndex(r.normalIndex, tagRecommends, tagRecommendVersion, tagRecommendFlags); err != nil {
+	if err := r.Recommends.AddToIndex(r.payloadIndex, tagRecommends, tagRecommendVersion, tagRecommendFlags); err != nil {
 		return errors.Wrap(err, "failed to add recommends")
 	}
-	if err := r.Requires.AddToIndex(r.normalIndex, tagRequires, tagRequireVersion, tagRequireFlags); err != nil {
+	if err := r.Requires.AddToIndex(r.payloadIndex, tagRequires, tagRequireVersion, tagRequireFlags); err != nil {
 		return errors.Wrap(err, "failed to add requires")
 	}
-	if err := r.Conflicts.AddToIndex(r.normalIndex, tagConflicts, tagConflictVersion, tagConflictFlags); err != nil {
+	if err := r.Conflicts.AddToIndex(r.payloadIndex, tagConflicts, tagConflictVersion, tagConflictFlags); err != nil {
 		return errors.Wrap(err, "failed to add conflicts")
 	}
 
@@ -291,6 +318,8 @@ func (r *RPM) WriteGeneralIndexes() error {
 		err error
 		headerI18NTableEntry,
 		nameEntry,
+		summaryEntry,
+		descriptionEntry,
 		versionEntry,
 		releaseEntry,
 		archEntry,
@@ -311,6 +340,12 @@ func (r *RPM) WriteGeneralIndexes() error {
 		return err
 	}
 	if nameEntry, err = NewIndexEntry(r.Name); err != nil {
+		return err
+	}
+	if summaryEntry, err = NewIndexEntry(r.Summary); err != nil {
+		return err
+	}
+	if descriptionEntry, err = NewIndexEntry(r.Description); err != nil {
 		return err
 	}
 	if versionEntry, err = NewIndexEntry(r.Version); err != nil {
@@ -361,6 +396,8 @@ func (r *RPM) WriteGeneralIndexes() error {
 
 	r.AddTag(tagHeaderI18NTable, headerI18NTableEntry)
 	r.AddTag(tagName, nameEntry)
+	r.AddTag(tagSummary, summaryEntry)
+	r.AddTag(tagDescription, descriptionEntry)
 	r.AddTag(tagVersion, versionEntry)
 	r.AddTag(tagRelease, releaseEntry)
 	r.AddTag(tagArch, archEntry)

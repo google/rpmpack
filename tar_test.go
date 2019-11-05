@@ -81,7 +81,7 @@ func TestFromTar(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := FromTar(tc.input, RPMMetaData{})
+			r, err := FromTar(tc.input, RPMMetaData{Name: tc.name})
 			if err != nil {
 				t.Errorf("FromTar returned err: %v", err)
 			}

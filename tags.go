@@ -19,24 +19,26 @@ package rpmpack
 const (
 	tagHeaderI18NTable = 0x64 // 100
 	// Signature tags are obiously overlapping regular header tags..
-	sigSHA256      = 0x0111 // 273
-	sigSize        = 0x03e8 // 1000
-	sigPayloadSize = 0x03ef // 1007
+	sigSHA256      = 0x0111 // 273  - Required
+	sigSize        = 0x03e8 // 1000  - Required
+	sigPayloadSize = 0x03ef // 1007  - Required
 
 	// https://github.com/rpm-software-management/rpm/blob/92eadae94c48928bca90693ad63c46ceda37d81f/rpmio/rpmpgp.h#L258
 	hashAlgoSHA256 = 0x0008 // 8
 
-	tagName     = 0x03e8 // 1000
-	tagVersion  = 0x03e9 // 1001
-	tagRelease  = 0x03ea // 1002
-	tagSize     = 0x03f1 // 1009
-	tagVendor   = 0x03f3 // 1011
-	tagLicence  = 0x03f6 // 1014
-	tagPackager = 0x03f7 // 1015
-	tagGroup    = 0x03f8 // 1016
-	tagURL      = 0x03fc // 1020
-	tagOS       = 0x03fd // 1021
-	tagArch     = 0x03fe // 1022
+	tagName        = 0x03e8 // 1000 - Required
+	tagVersion     = 0x03e9 // 1001 - Required
+	tagRelease     = 0x03ea // 1002 - Required
+	tagSummary     = 0x03ec // 1004 - Required
+	tagDescription = 0x03ed // 1005 - Required
+	tagSize        = 0x03f1 // 1009 - Required
+	tagVendor      = 0x03f3 // 1011
+	tagLicence     = 0x03f6 // 1014 - Required
+	tagPackager    = 0x03f7 // 1015
+	tagGroup       = 0x03f8 // 1016 - Required
+	tagURL         = 0x03fc // 1020
+	tagOS          = 0x03fd // 1021 - Required
+	tagArch        = 0x03fe // 1022 - Required
 
 	tagPrein  = 0x03ff // 1023
 	tagPostin = 0x0400 // 1024
@@ -75,9 +77,9 @@ const (
 	tagDirindexes        = 0x045c // 1116
 	tagBasenames         = 0x045d // 1117
 	tagDirnames          = 0x045e // 1118
-	tagPayloadFormat     = 0x0464 // 1124
-	tagPayloadCompressor = 0x0465 // 1125
-	tagPayloadFlags      = 0x0466 // 1126
+	tagPayloadFormat     = 0x0464 // 1124 - Required
+	tagPayloadCompressor = 0x0465 // 1125 - Required
+	tagPayloadFlags      = 0x0466 // 1126 - Required
 	tagFileDigestAlgo    = 0x1393 // 5011
 	tagRecommends        = 0x13b6 // 5046
 	tagRecommendVersion  = 0x13b7 // 5047
