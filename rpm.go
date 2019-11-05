@@ -209,13 +209,13 @@ func (r *RPM) Write(w io.Writer) error {
 	if r.closed {
 		return ErrWriteAfterClose
 	}
-
 	if err = r.DefaultTags(); err != nil {
 		return err
 	}
 	if err = r.WriteFileIndexes(); err != nil {
 		return err
 	}
+
 	if err = r.WritePayloadIndexes(); err != nil {
 		return err
 	}
@@ -231,13 +231,6 @@ func (r *RPM) Write(w io.Writer) error {
 func (r *RPM) WriteCustom(w io.Writer) error {
 	if r.closed {
 		return ErrWriteAfterClose
-	}
-
-	if err := r.cpio.Close(); err != nil {
-		return errors.Wrap(err, "failed to close cpio payload")
-	}
-	if err := r.compressedPayload.Close(); err != nil {
-		return errors.Wrap(err, "failed to close gzip payload")
 	}
 
 	if _, err := w.Write(lead(r.Name, r.FullVersion())); err != nil {
@@ -413,6 +406,13 @@ func (r *RPM) WritePayloadIndexes() error {
 		payloadDigestAlgoEntry,
 		payloadFlagsEntry *IndexEntry
 	)
+
+	if err := r.cpio.Close(); err != nil {
+		return errors.Wrap(err, "failed to close cpio payload")
+	}
+	if err := r.compressedPayload.Close(); err != nil {
+		return errors.Wrap(err, "failed to close gzip payload")
+	}
 
 	if sizeEntry, err = NewIndexEntry([]int32{int32(r.payloadSize)}); err != nil {
 		return err
