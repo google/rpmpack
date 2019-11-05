@@ -26,17 +26,19 @@ const (
 	// https://github.com/rpm-software-management/rpm/blob/92eadae94c48928bca90693ad63c46ceda37d81f/rpmio/rpmpgp.h#L258
 	hashAlgoSHA256 = 0x0008 // 8
 
-	tagName     = 0x03e8 // 1000
-	tagVersion  = 0x03e9 // 1001
-	tagRelease  = 0x03ea // 1002
-	tagSize     = 0x03f1 // 1009
-	tagVendor   = 0x03f3 // 1011
-	tagLicence  = 0x03f6 // 1014
-	tagPackager = 0x03f7 // 1015
-	tagGroup    = 0x03f8 // 1016
-	tagURL      = 0x03fc // 1020
-	tagOS       = 0x03fd // 1021
-	tagArch     = 0x03fe // 1022
+	tagName        = 0x03e8 // 1000
+	tagVersion     = 0x03e9 // 1001
+	tagRelease     = 0x03ea // 1002
+	tagSummary     = 0x03ec // 1004
+	tagDescription = 0x03ed // 1005
+	tagSize        = 0x03f1 // 1009
+	tagVendor      = 0x03f3 // 1011
+	tagLicence     = 0x03f6 // 1014
+	tagPackager    = 0x03f7 // 1015
+	tagGroup       = 0x03f8 // 1016
+	tagURL         = 0x03fc // 1020
+	tagOS          = 0x03fd // 1021
+	tagArch        = 0x03fe // 1022
 
 	tagPrein  = 0x03ff // 1023
 	tagPostin = 0x0400 // 1024

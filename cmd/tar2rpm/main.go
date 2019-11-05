@@ -37,6 +37,7 @@ var (
 	arch        = flag.String("arch", "noarch", "the rpm architecture")
 	compressor  = flag.String("compressor", "gzip", "the rpm compressor")
 	osName      = flag.String("os", "linux", "the rpm os")
+	summary     = flag.String("summary", "", "the rpm summary")
 	description = flag.String("description", "", "the rpm description")
 	vendor      = flag.String("vendor", "", "the rpm vendor")
 	packager    = flag.String("packager", "", "the rpm packager")
@@ -117,6 +118,7 @@ func main() {
 			URL:         *url,
 			Licence:     *licence,
 			Description: *description,
+			Summary:     *summary,
 			Compressor:  *compressor,
 			Provides:    provides,
 			Obsoletes:   obsoletes,

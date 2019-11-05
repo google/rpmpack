@@ -42,6 +42,7 @@ var (
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
 	Name,
+	Summary,
 	Description,
 	Version,
 	Release,
@@ -243,6 +244,8 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
 	h.Add(tagVersion, entry(r.Version))
+	h.Add(tagSummary, entry(r.Summary))
+	h.Add(tagDescription, entry(r.Description))
 	h.Add(tagRelease, entry(r.Release))
 	h.Add(tagPayloadFormat, entry("cpio"))
 	h.Add(tagPayloadCompressor, entry(r.Compressor))
