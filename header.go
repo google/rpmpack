@@ -41,32 +41,32 @@ var boundaries = map[int]int{
 	typeInt32: 4,
 }
 
-type indexEntry struct {
+type IndexEntry struct {
 	rpmtype, count int
 	data           []byte
 }
 
-func (e indexEntry) indexBytes(tag, contentOffset int) []byte {
+func (e IndexEntry) indexBytes(tag, contentOffset int) ([]byte, error) {
 	b := &bytes.Buffer{}
 	if err := binary.Write(b, binary.BigEndian, []int32{int32(tag), int32(e.rpmtype), int32(contentOffset), int32(e.count)}); err != nil {
 		// binary.Write can fail if the underlying Write fails, or the types are invalid.
 		// bytes.Buffer's write never error out, it can only panic with OOM.
-		panic(err)
+		return nil, err
 	}
-	return b.Bytes()
+	return b.Bytes(), nil
 }
 
-func intEntry(rpmtype, size int, value interface{}) indexEntry {
+func intEntry(rpmtype, size int, value interface{}) (*IndexEntry, error) {
 	b := &bytes.Buffer{}
 	if err := binary.Write(b, binary.BigEndian, value); err != nil {
 		// binary.Write can fail if the underlying Write fails, or the types are invalid.
 		// bytes.Buffer's write never error out, it can only panic with OOM.
-		panic(err)
+		return nil, err
 	}
-	return indexEntry{rpmtype, size, b.Bytes()}
+	return &IndexEntry{rpmtype, size, b.Bytes()}, nil
 }
 
-func entry(value interface{}) indexEntry {
+func NewIndexEntry(value interface{}) (*IndexEntry, error) {
 	switch value := value.(type) {
 	case []int16:
 		return intEntry(typeInt16, len(value), value)
@@ -77,29 +77,30 @@ func entry(value interface{}) indexEntry {
 	case []uint32:
 		return intEntry(typeInt32, len(value), value)
 	case string:
-		return indexEntry{typeString, 1, append([]byte(value), byte(00))}
+		return &IndexEntry{typeString, 1, append([]byte(value), byte(00))}, nil
 	case []byte:
-		return indexEntry{typeBinary, len(value), value}
+		return &IndexEntry{typeBinary, len(value), value}, nil
 	case []string:
 		b := [][]byte{}
 		for _, v := range value {
 			b = append(b, []byte(v))
 		}
 		bb := append(bytes.Join(b, []byte{00}), byte(00))
-		return indexEntry{typeStringArray, len(value), bb}
+		return &IndexEntry{typeStringArray, len(value), bb}, nil
 	}
-	panic(fmt.Sprintf("Unexpected entry type: %T", value))
+
+	return nil, fmt.Errorf("unsupported index entry type %T", value)
 }
 
 type index struct {
-	entries map[int]indexEntry
+	entries map[int]*IndexEntry
 	h       int
 }
 
 func newIndex(h int) *index {
-	return &index{entries: make(map[int]indexEntry), h: h}
+	return &index{entries: make(map[int]*IndexEntry), h: h}
 }
-func (i *index) Add(tag int, e indexEntry) {
+func (i *index) Add(tag int, e *IndexEntry) {
 	i.entries[tag] = e
 }
 func (i *index) sortedTags() []int {
@@ -111,19 +112,24 @@ func (i *index) sortedTags() []int {
 	return t
 }
 
-func pad(w *bytes.Buffer, rpmtype, offset int) {
+func pad(w *bytes.Buffer, rpmtype, offset int) error {
 	// We need to align integer entries...
 	if b, ok := boundaries[rpmtype]; ok && offset%b != 0 {
 		if _, err := w.Write(make([]byte, b-offset%b)); err != nil {
 			// binary.Write can fail if the underlying Write fails, or the types are invalid.
 			// bytes.Buffer's write never error out, it can only panic with OOM.
-			panic(err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 // Bytes returns the bytes of the index.
 func (i *index) Bytes() ([]byte, error) {
+	var err error
+	var entry *IndexEntry
+	var entryBytes []byte
 	w := &bytes.Buffer{}
 	// Even the header has three parts: The lead, the index entries, and the entries.
 	// Because of alignment, we can only tell the actual size and offset after writing
@@ -133,44 +139,59 @@ func (i *index) Bytes() ([]byte, error) {
 	offsets := make([]int, len(tags))
 	for ii, tag := range tags {
 		e := i.entries[tag]
-		pad(entryData, e.rpmtype, entryData.Len())
+		if err := pad(entryData, e.rpmtype, entryData.Len()); err != nil {
+			return nil, err
+		}
 		offsets[ii] = entryData.Len()
 		entryData.Write(e.data)
 	}
-	entryData.Write(i.eigenHeader().data)
+	if entry, err = i.eigenHeader(); err != nil {
+		return nil, err
+	}
+	entryData.Write(entry.data)
 
 	// 4 magic and 4 reserved
 	w.Write([]byte{0x8e, 0xad, 0xe8, 0x01, 0, 0, 0, 0})
 	// 4 count and 4 size
-	// We add the pseudo-entry "eigenHeader" to count.
-	if err := binary.Write(w, binary.BigEndian, []int32{int32(len(i.entries)) + 1, int32(entryData.Len())}); err != nil {
+	// We add the pseudo-NewIndexEntry "eigenHeader" to count.
+	if err = binary.Write(w, binary.BigEndian, []int32{int32(len(i.entries)) + 1, int32(entryData.Len())}); err != nil {
 		return nil, errors.Wrap(err, "failed to write eigenHeader")
 	}
-	// Write the eigenHeader index entry
-	w.Write(i.eigenHeader().indexBytes(i.h, entryData.Len()-0x10))
+	// Write the eigenHeader index NewIndexEntry
+	if entry, err = i.eigenHeader(); err != nil {
+		return nil, err
+	}
+	if entryBytes, err = entry.indexBytes(i.h, entryData.Len()-0x10); err != nil {
+		return nil, err
+	}
+	w.Write(entryBytes)
 	// Write all of the other index entries
+	var idxBytes []byte
 	for ii, tag := range tags {
 		e := i.entries[tag]
-		w.Write(e.indexBytes(tag, offsets[ii]))
+		if idxBytes, err = e.indexBytes(tag, offsets[ii]); err != nil {
+			return nil, err
+		}
+		w.Write(idxBytes)
 	}
 	w.Write(entryData.Bytes())
 	return w.Bytes(), nil
 }
 
-// the eigenHeader is a weird entry. Its index entry is sorted first, but its content
-// is last. The content is a 16 byte index entry, which is almost the same as the index
-// entry except for the offset. The offset here is ... minus the length of the index entry region.
+// the eigenHeader is a weird NewIndexEntry. Its index NewIndexEntry is sorted first, but its content
+// is last. The content is a 16 byte index NewIndexEntry, which is almost the same as the index
+// NewIndexEntry except for the offset. The offset here is ... minus the length of the index NewIndexEntry region.
 // Which is always 0x10 * number of entries.
 // I kid you not.
-func (i *index) eigenHeader() indexEntry {
+func (i *index) eigenHeader() (*IndexEntry, error) {
 	b := &bytes.Buffer{}
 	if err := binary.Write(b, binary.BigEndian, []int32{int32(i.h), int32(typeBinary), -int32(0x10 * (len(i.entries) + 1)), int32(0x10)}); err != nil {
 		// binary.Write can fail if the underlying Write fails, or the types are invalid.
 		// bytes.Buffer's write never error out, it can only panic with OOM.
-		panic(err)
+		return nil, err
 	}
 
-	return entry(b.Bytes())
+	return NewIndexEntry(b.Bytes())
 }
 
 func lead(name, fullVersion string) []byte {

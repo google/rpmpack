@@ -71,13 +71,19 @@ func TestEntry(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			e := entry(tc.value)
-			gotBytes := e.indexBytes(tc.tag, tc.offset)
+			e, err := NewIndexEntry(tc.value)
+			if err != nil {
+				t.Error(err)
+			}
+			gotBytes, err := e.indexBytes(tc.tag, tc.offset)
+			if err != nil {
+				t.Error(err)
+			}
 			if d := cmp.Diff(tc.wantIndexBytes, fmt.Sprintf("%x", gotBytes)); d != "" {
-				t.Errorf("entry.indexBytes() unexpected value (want->got):\n%s", d)
+				t.Errorf("NewIndexEntry.indexBytes() unexpected value (want->got):\n%s", d)
 			}
 			if d := cmp.Diff(tc.wantData, fmt.Sprintf("%x", e.data)); d != "" {
-				t.Errorf("entry.data unexpected value (want->got):\n%s", d)
+				t.Errorf("NewIndexEntry.data unexpected value (want->got):\n%s", d)
 			}
 		})
 	}
@@ -85,15 +91,23 @@ func TestEntry(t *testing.T) {
 
 func TestIndex(t *testing.T) {
 	i := newIndex(0x3e)
-	i.Add(0x1111, entry([]uint16{0x4444, 0x8888, 0xcccc}))
-	i.Add(0x2222, entry([]uint32{0x3333, 0x5555}))
+	e, err := NewIndexEntry([]uint16{0x4444, 0x8888, 0xcccc})
+	if err != nil {
+		t.Errorf("NewIndexEntry returned error: %v", err)
+	}
+	i.Add(0x1111, e)
+	e, err = NewIndexEntry([]uint32{0x3333, 0x5555})
+	if err != nil {
+		t.Errorf("NewIndexEntry returned error: %v", err)
+	}
+	i.Add(0x2222, e)
 	got, err := i.Bytes()
 	if err != nil {
 		t.Errorf("i.Bytes() returned error: %v", err)
 	}
 	want := "8eade80100000000" + // header lead
 		"0000000300000020" + // count and size
-		"0000003e000000070000001000000010" + // eigen header entry
+		"0000003e000000070000001000000010" + // eigen header NewIndexEntry
 		"00001111000000030000000000000003" +
 		"00002222000000040000000800000002" +
 		"44448888cccc00000000333300005555" + // values, with padding

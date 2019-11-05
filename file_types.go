@@ -34,7 +34,7 @@ const (
 	ExcludeFile
 )
 
-// RPMFile contains a particular file's entry and data.
+// RPMFile contains a particular file's NewIndexEntry and data.
 type RPMFile struct {
 	Name  string
 	Body  []byte

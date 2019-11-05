@@ -67,7 +67,6 @@ func createTar(t *testing.T) io.Reader {
 }
 
 func TestFromTar(t *testing.T) {
-
 	testCases := []struct {
 		name          string
 		input         io.Reader

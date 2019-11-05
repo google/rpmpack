@@ -75,10 +75,14 @@ func (r *Relations) addIfMissing(value *Relation) {
 // AddToIndex add the relations to the specified category on the index
 func (r *Relations) AddToIndex(h *index, nameTag, versionTag, flagsTag int) error {
 	var (
+		err      error
 		num      = len(*r)
 		names    = make([]string, num)
 		versions = make([]string, num)
 		flags    = make([]uint32, num)
+		nameEntry,
+		versionEntry,
+		flagsEntry *IndexEntry
 	)
 
 	if num == 0 {
@@ -91,9 +95,19 @@ func (r *Relations) AddToIndex(h *index, nameTag, versionTag, flagsTag int) erro
 		flags[idx] = uint32(relation.Sense)
 	}
 
-	h.Add(nameTag, entry(names))
-	h.Add(versionTag, entry(versions))
-	h.Add(flagsTag, entry(flags))
+	if nameEntry, err = NewIndexEntry(names); err != nil {
+		return err
+	}
+	if versionEntry, err = NewIndexEntry(versions); err != nil {
+		return err
+	}
+	if flagsEntry, err = NewIndexEntry(flags); err != nil {
+		return err
+	}
+
+	h.Add(nameTag, nameEntry)
+	h.Add(versionTag, versionEntry)
+	h.Add(flagsTag, flagsEntry)
 
 	return nil
 }

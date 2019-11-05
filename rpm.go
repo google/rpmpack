@@ -85,6 +85,8 @@ type RPM struct {
 	postin            string
 	preun             string
 	postun            string
+	sigIndex,
+	normalIndex *index
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -125,6 +127,8 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		compressedPayload: z,
 		cpio:              cpio.NewWriter(z),
 		files:             make(map[string]RPMFile),
+		normalIndex:       newIndex(immutable),
+		sigIndex:          newIndex(signatures),
 	}
 
 	// A package must provide itself...
@@ -146,22 +150,89 @@ func (r *RPM) FullVersion() string {
 	return r.Version
 }
 
+// AddTag a tag to the normal index of the rpm
+func (r *RPM) AddTag(rpmTag int, value *IndexEntry) {
+	r.normalIndex.Add(rpmTag, value)
+}
+
+// AddSignatureTag a tag to the signature index of the rpm
+func (r *RPM) AddSignatureTag(rpmTag int, value *IndexEntry) {
+	r.sigIndex.Add(rpmTag, value)
+}
+
+func (r *RPM) DefaultTags() error {
+	var err error
+
+	// Write the regular header.
+	if err = r.WriteGeneralIndexes(); err != nil {
+		return err
+	}
+	if err = r.WriteRelationIndexes(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Only call this after the payload and header were written.
+func (r *RPM) WriteSignatures() error {
+	var (
+		err error
+		sigSizeEntry,
+		sigSHA256Entry,
+		sigPayloadSizeEntry *IndexEntry
+	)
+
+	regHeader, err := r.normalIndex.Bytes()
+	if err != nil {
+		return errors.Wrap(err, "failed to retrieve header")
+	}
+
+	if sigSizeEntry, err = NewIndexEntry([]int32{int32(r.payload.Len() + len(regHeader))}); err != nil {
+		return err
+	}
+	if sigSHA256Entry, err = NewIndexEntry(fmt.Sprintf("%x", sha256.Sum256(regHeader))); err != nil {
+		return err
+	}
+	if sigPayloadSizeEntry, err = NewIndexEntry([]int32{int32(r.payloadSize)}); err != nil {
+		return err
+	}
+	r.AddSignatureTag(sigSize, sigSizeEntry)
+	r.AddSignatureTag(sigSHA256, sigSHA256Entry)
+	r.AddSignatureTag(sigPayloadSize, sigPayloadSizeEntry)
+
+	return nil
+}
+
 // Write closes the rpm and writes the whole rpm to an io.Writer
 func (r *RPM) Write(w io.Writer) error {
+	var err error
 	if r.closed {
 		return ErrWriteAfterClose
 	}
-	// Add all of the files, sorted alphabetically.
-	fnames := []string{}
-	for fn := range r.files {
-		fnames = append(fnames, fn)
+
+	if err = r.DefaultTags(); err != nil {
+		return err
 	}
-	sort.Strings(fnames)
-	for _, fn := range fnames {
-		if err := r.writeFile(r.files[fn]); err != nil {
-			return errors.Wrapf(err, "failed to write file %q", fn)
-		}
+	if err = r.WriteFileIndexes(); err != nil {
+		return err
 	}
+	if err = r.WritePayloadIndexes(); err != nil {
+		return err
+	}
+	if err = r.WriteSignatures(); err != nil {
+		return err
+	}
+
+	return r.WriteCustom(w)
+}
+
+// WriteCustom closes the rpm and writes the whole rpm to an io.Writer
+// does NOT write the default indexes or signature indexes, it expects you to do that
+func (r *RPM) WriteCustom(w io.Writer) error {
+	if r.closed {
+		return ErrWriteAfterClose
+	}
+
 	if err := r.cpio.Close(); err != nil {
 		return errors.Wrap(err, "failed to close cpio payload")
 	}
@@ -172,22 +243,13 @@ func (r *RPM) Write(w io.Writer) error {
 	if _, err := w.Write(lead(r.Name, r.FullVersion())); err != nil {
 		return errors.Wrap(err, "failed to write lead")
 	}
-	// Write the regular header.
-	h := newIndex(immutable)
-	r.writeGenIndexes(h)
-	r.writeFileIndexes(h)
-	if err := r.writeRelationIndexes(h); err != nil {
-		return err
-	}
 
-	hb, err := h.Bytes()
+	hb, err := r.normalIndex.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve header")
 	}
-	// Write the signatures
-	s := newIndex(signatures)
-	r.writeSignatures(s, hb)
-	sb, err := s.Bytes()
+
+	sb, err := r.sigIndex.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve signatures header")
 	}
@@ -204,93 +266,261 @@ func (r *RPM) Write(w io.Writer) error {
 	}
 	_, err = w.Write(r.payload.Bytes())
 	return errors.Wrap(err, "failed to write payload")
-
 }
 
-// Only call this after the payload and header were written.
-func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
-	sigHeader.Add(sigSize, entry([]int32{int32(r.payload.Len() + len(regHeader))}))
-	sigHeader.Add(sigSHA256, entry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
-	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
-}
-
-func (r *RPM) writeRelationIndexes(h *index) error {
+// WriteRelationIndexes write the relation sense indexes
+func (r *RPM) WriteRelationIndexes() error {
 	// add all relation categories
-	if err := r.Provides.AddToIndex(h, tagProvides, tagProvideVersion, tagProvideFlags); err != nil {
+	if err := r.Provides.AddToIndex(r.normalIndex, tagProvides, tagProvideVersion, tagProvideFlags); err != nil {
 		return errors.Wrap(err, "failed to add provides")
 	}
-	if err := r.Obsoletes.AddToIndex(h, tagObsoletes, tagObsoleteVersion, tagObsoleteFlags); err != nil {
+	if err := r.Obsoletes.AddToIndex(r.normalIndex, tagObsoletes, tagObsoleteVersion, tagObsoleteFlags); err != nil {
 		return errors.Wrap(err, "failed to add obsoletes")
 	}
-	if err := r.Suggests.AddToIndex(h, tagSuggests, tagSuggestVersion, tagSuggestFlags); err != nil {
+	if err := r.Suggests.AddToIndex(r.normalIndex, tagSuggests, tagSuggestVersion, tagSuggestFlags); err != nil {
 		return errors.Wrap(err, "failed to add suggests")
 	}
-	if err := r.Recommends.AddToIndex(h, tagRecommends, tagRecommendVersion, tagRecommendFlags); err != nil {
+	if err := r.Recommends.AddToIndex(r.normalIndex, tagRecommends, tagRecommendVersion, tagRecommendFlags); err != nil {
 		return errors.Wrap(err, "failed to add recommends")
 	}
-	if err := r.Requires.AddToIndex(h, tagRequires, tagRequireVersion, tagRequireFlags); err != nil {
+	if err := r.Requires.AddToIndex(r.normalIndex, tagRequires, tagRequireVersion, tagRequireFlags); err != nil {
 		return errors.Wrap(err, "failed to add requires")
 	}
-	if err := r.Conflicts.AddToIndex(h, tagConflicts, tagConflictVersion, tagConflictFlags); err != nil {
+	if err := r.Conflicts.AddToIndex(r.normalIndex, tagConflicts, tagConflictVersion, tagConflictFlags); err != nil {
 		return errors.Wrap(err, "failed to add conflicts")
 	}
 
 	return nil
 }
 
-func (r *RPM) writeGenIndexes(h *index) {
-	h.Add(tagHeaderI18NTable, entry("C"))
-	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
-	h.Add(tagName, entry(r.Name))
-	h.Add(tagVersion, entry(r.Version))
-	h.Add(tagRelease, entry(r.Release))
-	h.Add(tagPayloadFormat, entry("cpio"))
-	h.Add(tagPayloadCompressor, entry(r.Compressor))
-	h.Add(tagPayloadFlags, entry("9"))
-	h.Add(tagArch, entry(r.Arch))
-	h.Add(tagOS, entry(r.OS))
-	h.Add(tagVendor, entry(r.Vendor))
-	h.Add(tagLicence, entry(r.Licence))
-	h.Add(tagPackager, entry(r.Packager))
-	h.Add(tagGroup, entry(r.Group))
-	h.Add(tagURL, entry(r.URL))
-	h.Add(tagPayloadDigest, entry([]string{fmt.Sprintf("%x", sha256.Sum256(r.payload.Bytes()))}))
-	h.Add(tagPayloadDigestAlgo, entry([]int32{hashAlgoSHA256}))
+func (r *RPM) WriteGeneralIndexes() error {
+	var (
+		err error
+		headerI18NTableEntry,
+		nameEntry,
+		versionEntry,
+		releaseEntry,
+		archEntry,
+		osEntry,
+		vendorEntry,
+		licenceEntry,
+		packagerEntry,
+		groupEntry,
+		urlEntry,
+		sourceRPMEntry,
+		progEntry,
+		preinEntry,
+		postinEntry,
+		preunEntry,
+		postunEntry *IndexEntry
+	)
+	if headerI18NTableEntry, err = NewIndexEntry("C"); err != nil {
+		return err
+	}
+	if nameEntry, err = NewIndexEntry(r.Name); err != nil {
+		return err
+	}
+	if versionEntry, err = NewIndexEntry(r.Version); err != nil {
+		return err
+	}
+	if releaseEntry, err = NewIndexEntry(r.Release); err != nil {
+		return err
+	}
+	if archEntry, err = NewIndexEntry(r.Arch); err != nil {
+		return err
+	}
+	if osEntry, err = NewIndexEntry(r.OS); err != nil {
+		return err
+	}
+	if vendorEntry, err = NewIndexEntry(r.Vendor); err != nil {
+		return err
+	}
+	if licenceEntry, err = NewIndexEntry(r.Licence); err != nil {
+		return err
+	}
+	if packagerEntry, err = NewIndexEntry(r.Packager); err != nil {
+		return err
+	}
+	if groupEntry, err = NewIndexEntry(r.Group); err != nil {
+		return err
+	}
+	if urlEntry, err = NewIndexEntry(r.URL); err != nil {
+		return err
+	}
+	if sourceRPMEntry, err = NewIndexEntry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())); err != nil {
+		return err
+	}
+	if progEntry, err = NewIndexEntry("/bin/sh"); err != nil {
+		return err
+	}
+	if preinEntry, err = NewIndexEntry(r.prein); err != nil {
+		return err
+	}
+	if postinEntry, err = NewIndexEntry(r.postin); err != nil {
+		return err
+	}
+	if preunEntry, err = NewIndexEntry(r.preun); err != nil {
+		return err
+	}
+	if postunEntry, err = NewIndexEntry(r.postun); err != nil {
+		return err
+	}
+
+	r.AddTag(tagHeaderI18NTable, headerI18NTableEntry)
+	r.AddTag(tagName, nameEntry)
+	r.AddTag(tagVersion, versionEntry)
+	r.AddTag(tagRelease, releaseEntry)
+	r.AddTag(tagArch, archEntry)
+	r.AddTag(tagOS, osEntry)
+	r.AddTag(tagVendor, vendorEntry)
+	r.AddTag(tagLicence, licenceEntry)
+	r.AddTag(tagPackager, packagerEntry)
+	r.AddTag(tagGroup, groupEntry)
+	r.AddTag(tagURL, urlEntry)
 
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
-	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
+	r.AddTag(tagSourceRPM, sourceRPMEntry)
 	if r.prein != "" {
-		h.Add(tagPrein, entry(r.prein))
-		h.Add(tagPreinProg, entry("/bin/sh"))
+		r.AddTag(tagPrein, preinEntry)
+		r.AddTag(tagPreinProg, progEntry)
 	}
 	if r.postin != "" {
-		h.Add(tagPostin, entry(r.postin))
-		h.Add(tagPostinProg, entry("/bin/sh"))
+		r.AddTag(tagPostin, postinEntry)
+		r.AddTag(tagPostinProg, progEntry)
 	}
 	if r.preun != "" {
-		h.Add(tagPreun, entry(r.preun))
-		h.Add(tagPreunProg, entry("/bin/sh"))
+		r.AddTag(tagPreun, preunEntry)
+		r.AddTag(tagPreunProg, progEntry)
 	}
 	if r.postun != "" {
-		h.Add(tagPostun, entry(r.postun))
-		h.Add(tagPostunProg, entry("/bin/sh"))
+		r.AddTag(tagPostun, postunEntry)
+		r.AddTag(tagPostunProg, progEntry)
 	}
+
+	return nil
+}
+
+// WritePayloadIndexes writes payload related indexes
+func (r *RPM) WritePayloadIndexes() error {
+	var (
+		err error
+
+		payloadFormatEntry,
+		sizeEntry,
+		payloadCompressorEntry,
+		payloadDigestEntry,
+		payloadDigestAlgoEntry,
+		payloadFlagsEntry *IndexEntry
+	)
+
+	if sizeEntry, err = NewIndexEntry([]int32{int32(r.payloadSize)}); err != nil {
+		return err
+	}
+	if payloadFormatEntry, err = NewIndexEntry("cpio"); err != nil {
+		return err
+	}
+	if payloadCompressorEntry, err = NewIndexEntry(r.Compressor); err != nil {
+		return err
+	}
+	if payloadFlagsEntry, err = NewIndexEntry("9"); err != nil {
+		return err
+	}
+	if payloadDigestEntry, err = NewIndexEntry([]string{fmt.Sprintf("%x", sha256.Sum256(r.payload.Bytes()))}); err != nil {
+		return err
+	}
+	if payloadDigestAlgoEntry, err = NewIndexEntry([]int32{hashAlgoSHA256}); err != nil {
+		return err
+	}
+	r.AddTag(tagSize, sizeEntry)
+	r.AddTag(tagPayloadFormat, payloadFormatEntry)
+	r.AddTag(tagPayloadCompressor, payloadCompressorEntry)
+	r.AddTag(tagPayloadFlags, payloadFlagsEntry)
+	r.AddTag(tagPayloadDigest, payloadDigestEntry)
+	r.AddTag(tagPayloadDigestAlgo, payloadDigestAlgoEntry)
+
+	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
-func (r *RPM) writeFileIndexes(h *index) {
-	h.Add(tagBasenames, entry(r.basenames))
-	h.Add(tagDirindexes, entry(r.dirindexes))
-	h.Add(tagDirnames, entry(r.di.AllDirs()))
-	h.Add(tagFileSizes, entry(r.filesizes))
-	h.Add(tagFileModes, entry(r.filemodes))
-	h.Add(tagFileUserName, entry(r.fileowners))
-	h.Add(tagFileGroupName, entry(r.filegroups))
-	h.Add(tagFileMTimes, entry(r.filemtimes))
-	h.Add(tagFileDigests, entry(r.filedigests))
-	h.Add(tagFileLinkTos, entry(r.filelinktos))
-	h.Add(tagFileFlags, entry(r.fileflags))
+func (r *RPM) WriteFileIndexes() error {
+	var (
+		err error
+		basenamesEntry,
+		dirindexesEntry,
+		dirnamesEntry,
+		fileSizesEntry,
+		fileModesEntry,
+		fileUserNameEntry,
+		fileGroupNameEntry,
+		fileMTimesEntry,
+		fileDigestsEntry,
+		fileLinkTosEntry,
+		fileFlagsEntry,
+		fileINodeEntry,
+		fileDigestAlgoEntry,
+		fileVerifyFlagsEntry,
+		fileRDevsEntry,
+		fileLangsEntry *IndexEntry
+	)
+
+	// Add all of the files, sorted alphabetically.
+	var fnames []string
+	for fn := range r.files {
+		fnames = append(fnames, fn)
+	}
+	sort.Strings(fnames)
+	for _, fn := range fnames {
+		if err := r.writeFile(r.files[fn]); err != nil {
+			return errors.Wrapf(err, "failed to write file %q", fn)
+		}
+	}
+
+	if basenamesEntry, err = NewIndexEntry(r.basenames); err != nil {
+		return err
+	}
+	if dirindexesEntry, err = NewIndexEntry(r.dirindexes); err != nil {
+		return err
+	}
+	if dirnamesEntry, err = NewIndexEntry(r.di.AllDirs()); err != nil {
+		return err
+	}
+	if fileSizesEntry, err = NewIndexEntry(r.filesizes); err != nil {
+		return err
+	}
+	if fileModesEntry, err = NewIndexEntry(r.filemodes); err != nil {
+		return err
+	}
+	if fileUserNameEntry, err = NewIndexEntry(r.fileowners); err != nil {
+		return err
+	}
+	if fileGroupNameEntry, err = NewIndexEntry(r.filegroups); err != nil {
+		return err
+	}
+	if fileMTimesEntry, err = NewIndexEntry(r.filemtimes); err != nil {
+		return err
+	}
+	if fileDigestsEntry, err = NewIndexEntry(r.filedigests); err != nil {
+		return err
+	}
+	if fileLinkTosEntry, err = NewIndexEntry(r.filelinktos); err != nil {
+		return err
+	}
+	if fileFlagsEntry, err = NewIndexEntry(r.fileflags); err != nil {
+		return err
+	}
+
+	r.AddTag(tagBasenames, basenamesEntry)
+	r.AddTag(tagDirindexes, dirindexesEntry)
+	r.AddTag(tagDirnames, dirnamesEntry)
+	r.AddTag(tagFileSizes, fileSizesEntry)
+	r.AddTag(tagFileModes, fileModesEntry)
+	r.AddTag(tagFileUserName, fileUserNameEntry)
+	r.AddTag(tagFileGroupName, fileGroupNameEntry)
+	r.AddTag(tagFileMTimes, fileMTimesEntry)
+	r.AddTag(tagFileDigests, fileDigestsEntry)
+	r.AddTag(tagFileLinkTos, fileLinkTosEntry)
+	r.AddTag(tagFileFlags, fileFlagsEntry)
 
 	inodes := make([]int32, len(r.dirindexes))
 	digestAlgo := make([]int32, len(r.dirindexes))
@@ -306,11 +536,30 @@ func (r *RPM) writeFileIndexes(h *index) {
 		verifyFlags[ii] = int32(-1)
 		fileRDevs[ii] = int16(1)
 	}
-	h.Add(tagFileINodes, entry(inodes))
-	h.Add(tagFileDigestAlgo, entry(digestAlgo))
-	h.Add(tagFileVerifyFlags, entry(verifyFlags))
-	h.Add(tagFileRDevs, entry(fileRDevs))
-	h.Add(tagFileLangs, entry(fileLangs))
+
+	if fileINodeEntry, err = NewIndexEntry(inodes); err != nil {
+		return err
+	}
+	if fileDigestAlgoEntry, err = NewIndexEntry(digestAlgo); err != nil {
+		return err
+	}
+	if fileVerifyFlagsEntry, err = NewIndexEntry(verifyFlags); err != nil {
+		return err
+	}
+	if fileRDevsEntry, err = NewIndexEntry(fileRDevs); err != nil {
+		return err
+	}
+	if fileLangsEntry, err = NewIndexEntry(fileLangs); err != nil {
+		return err
+	}
+
+	r.AddTag(tagFileINodes, fileINodeEntry)
+	r.AddTag(tagFileDigestAlgo, fileDigestAlgoEntry)
+	r.AddTag(tagFileVerifyFlags, fileVerifyFlagsEntry)
+	r.AddTag(tagFileRDevs, fileRDevsEntry)
+	r.AddTag(tagFileLangs, fileLangsEntry)
+
+	return nil
 }
 
 // AddPrein adds a prein sciptlet
