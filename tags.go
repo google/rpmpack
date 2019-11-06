@@ -31,6 +31,8 @@ const (
 	tagRelease     = 0x03ea // 1002 - Required
 	tagSummary     = 0x03ec // 1004 - Required
 	tagDescription = 0x03ed // 1005 - Required
+	tagBuildTime   = 0x03ee // 1006
+	tagBuildHost   = 0x03ef // 1007
 	tagSize        = 0x03f1 // 1009 - Required
 	tagVendor      = 0x03f3 // 1011
 	tagLicence     = 0x03f6 // 1014 - Required

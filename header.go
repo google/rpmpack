@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -78,6 +79,9 @@ func NewIndexEntry(value interface{}) (*IndexEntry, error) {
 		return intEntry(typeInt32, len(value), value)
 	case string:
 		return &IndexEntry{typeString, 1, append([]byte(value), byte(00))}, nil
+	case time.Time:
+		v := []int32{int32(value.Unix())}
+		return intEntry(typeInt32, len(v), v)
 	case []byte:
 		return &IndexEntry{typeBinary, len(value), value}, nil
 	case []string:

@@ -23,14 +23,16 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"sort"
+	"strings"
+	"time"
 
 	cpio "github.com/cavaliercoder/go-cpio"
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
-	"strings"
 )
 
 var (
@@ -45,6 +47,7 @@ type RPMMetaData struct {
 	Name,
 	Summary,
 	Description,
+	BuildHost,
 	Version,
 	Release,
 	Arch,
@@ -55,6 +58,7 @@ type RPMMetaData struct {
 	Group,
 	Licence,
 	Compressor string
+	BuildTime time.Time
 	Provides,
 	Obsoletes,
 	Suggests,
@@ -115,6 +119,15 @@ func defaultMetaData(m *RPMMetaData) {
 	}
 	if m.Licence == "" {
 		m.Licence = "UNKNOWN"
+	}
+	if m.BuildHost == "" {
+		m.BuildHost = "UNKNOWN"
+		if hostname, err := os.Hostname(); err == nil {
+			m.BuildHost = hostname
+		}
+	}
+	if m.BuildTime.IsZero() {
+		m.BuildTime = time.Now()
 	}
 }
 
@@ -320,6 +333,8 @@ func (r *RPM) WriteGeneralIndexes() error {
 		nameEntry,
 		summaryEntry,
 		descriptionEntry,
+		buildHostEntry,
+		buildTimeEntry,
 		versionEntry,
 		releaseEntry,
 		archEntry,
@@ -346,6 +361,12 @@ func (r *RPM) WriteGeneralIndexes() error {
 		return err
 	}
 	if descriptionEntry, err = NewIndexEntry(r.Description); err != nil {
+		return err
+	}
+	if buildHostEntry, err = NewIndexEntry(r.BuildHost); err != nil {
+		return err
+	}
+	if buildTimeEntry, err = NewIndexEntry(r.BuildTime); err != nil {
 		return err
 	}
 	if versionEntry, err = NewIndexEntry(r.Version); err != nil {
@@ -398,6 +419,8 @@ func (r *RPM) WriteGeneralIndexes() error {
 	r.AddTag(tagName, nameEntry)
 	r.AddTag(tagSummary, summaryEntry)
 	r.AddTag(tagDescription, descriptionEntry)
+	r.AddTag(tagBuildHost, buildHostEntry)
+	r.AddTag(tagBuildTime, buildTimeEntry)
 	r.AddTag(tagVersion, versionEntry)
 	r.AddTag(tagRelease, releaseEntry)
 	r.AddTag(tagArch, archEntry)

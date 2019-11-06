@@ -2,6 +2,7 @@ package rpmpack
 
 import (
 	"bytes"
+
 	"github.com/pkg/errors"
 )
 
