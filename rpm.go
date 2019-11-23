@@ -23,7 +23,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"os"
 	"path"
 	"sort"
 	"time"
@@ -55,7 +54,9 @@ type RPMMetaData struct {
 	Packager,
 	Group,
 	Licence,
+	BuildHost,
 	Compressor string
+	BuildTime time.Time
 	Provides,
 	Obsoletes,
 	Suggests,
@@ -177,9 +178,7 @@ func (r *RPM) Write(w io.Writer) error {
 	}
 	// Write the regular header.
 	h := newIndex(immutable)
-	if err := r.writeGenIndexes(h); err != nil {
-		return err
-	}
+	r.writeGenIndexes(h)
 	r.writeFileIndexes(h)
 	if err := r.writeRelationIndexes(h); err != nil {
 		return err
@@ -243,20 +242,15 @@ func (r *RPM) writeRelationIndexes(h *index) error {
 	return nil
 }
 
-func (r *RPM) writeGenIndexes(h *index) error {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return errors.Wrap(err, "failed to get hostname")
-	}
-
+func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagHeaderI18NTable, entry("C"))
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
 	h.Add(tagVersion, entry(r.Version))
 	h.Add(tagSummary, entry(r.Summary))
 	h.Add(tagDescription, entry(r.Description))
-	h.Add(tagBuildHost, entry(hostname))
-	h.Add(tagBuildTime, entry([]int32{int32(time.Now().Unix())}))
+	h.Add(tagBuildHost, entry(r.BuildHost))
+	h.Add(tagBuildTime, entry([]int32{int32(r.BuildTime.Unix())}))
 	h.Add(tagRelease, entry(r.Release))
 	h.Add(tagPayloadFormat, entry("cpio"))
 	h.Add(tagPayloadCompressor, entry(r.Compressor))
@@ -290,8 +284,6 @@ func (r *RPM) writeGenIndexes(h *index) error {
 		h.Add(tagPostun, entry(r.postun))
 		h.Add(tagPostunProg, entry("/bin/sh"))
 	}
-
-	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
