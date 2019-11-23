@@ -41,12 +41,12 @@ var boundaries = map[int]int{
 	typeInt32: 4,
 }
 
-type indexEntry struct {
+type IndexEntry struct {
 	rpmtype, count int
 	data           []byte
 }
 
-func (e indexEntry) indexBytes(tag, contentOffset int) []byte {
+func (e IndexEntry) indexBytes(tag, contentOffset int) []byte {
 	b := &bytes.Buffer{}
 	if err := binary.Write(b, binary.BigEndian, []int32{int32(tag), int32(e.rpmtype), int32(contentOffset), int32(e.count)}); err != nil {
 		// binary.Write can fail if the underlying Write fails, or the types are invalid.
@@ -56,52 +56,61 @@ func (e indexEntry) indexBytes(tag, contentOffset int) []byte {
 	return b.Bytes()
 }
 
-func intEntry(rpmtype, size int, value interface{}) indexEntry {
+func intEntry(rpmtype, size int, value interface{}) IndexEntry {
 	b := &bytes.Buffer{}
 	if err := binary.Write(b, binary.BigEndian, value); err != nil {
 		// binary.Write can fail if the underlying Write fails, or the types are invalid.
 		// bytes.Buffer's write never error out, it can only panic with OOM.
 		panic(err)
 	}
-	return indexEntry{rpmtype, size, b.Bytes()}
+	return IndexEntry{rpmtype, size, b.Bytes()}
 }
 
-func entry(value interface{}) indexEntry {
-	switch value := value.(type) {
-	case []int16:
-		return intEntry(typeInt16, len(value), value)
-	case []uint16:
-		return intEntry(typeInt16, len(value), value)
-	case []int32:
-		return intEntry(typeInt32, len(value), value)
-	case []uint32:
-		return intEntry(typeInt32, len(value), value)
-	case string:
-		return indexEntry{typeString, 1, append([]byte(value), byte(00))}
-	case []byte:
-		return indexEntry{typeBinary, len(value), value}
-	case []string:
-		b := [][]byte{}
-		for _, v := range value {
-			b = append(b, []byte(v))
-		}
-		bb := append(bytes.Join(b, []byte{00}), byte(00))
-		return indexEntry{typeStringArray, len(value), bb}
+func EntryInt16(value []int16) IndexEntry {
+	return intEntry(typeInt16, len(value), value)
+}
+func EntryUint16(value []uint16) IndexEntry {
+	return intEntry(typeInt16, len(value), value)
+}
+func EntryInt32(value []int32) IndexEntry {
+	return intEntry(typeInt32, len(value), value)
+}
+func EntryUint32(value []uint32) IndexEntry {
+	return intEntry(typeInt32, len(value), value)
+}
+func EntryString(value string) IndexEntry {
+	return IndexEntry{typeString, 1, append([]byte(value), byte(00))}
+}
+func EntryBytes(value []byte) IndexEntry {
+	return IndexEntry{typeBinary, len(value), value}
+}
+
+func EntryStringSlice(value []string) IndexEntry {
+	b := [][]byte{}
+	for _, v := range value {
+		b = append(b, []byte(v))
 	}
-	panic(fmt.Sprintf("Unexpected entry type: %T", value))
+	bb := append(bytes.Join(b, []byte{00}), byte(00))
+	return IndexEntry{typeStringArray, len(value), bb}
 }
 
 type index struct {
-	entries map[int]indexEntry
+	entries map[int]IndexEntry
 	h       int
 }
 
 func newIndex(h int) *index {
-	return &index{entries: make(map[int]indexEntry), h: h}
+	return &index{entries: make(map[int]IndexEntry), h: h}
 }
-func (i *index) Add(tag int, e indexEntry) {
+func (i *index) Add(tag int, e IndexEntry) {
 	i.entries[tag] = e
 }
+func (i *index) AddEntries(m map[int]IndexEntry) {
+	for t, e := range m {
+		i.Add(t, e)
+	}
+}
+
 func (i *index) sortedTags() []int {
 	t := []int{}
 	for k := range i.entries {
@@ -162,7 +171,7 @@ func (i *index) Bytes() ([]byte, error) {
 // entry except for the offset. The offset here is ... minus the length of the index entry region.
 // Which is always 0x10 * number of entries.
 // I kid you not.
-func (i *index) eigenHeader() indexEntry {
+func (i *index) eigenHeader() IndexEntry {
 	b := &bytes.Buffer{}
 	if err := binary.Write(b, binary.BigEndian, []int32{int32(i.h), int32(typeBinary), -int32(0x10 * (len(i.entries) + 1)), int32(0x10)}); err != nil {
 		// binary.Write can fail if the underlying Write fails, or the types are invalid.
@@ -170,7 +179,7 @@ func (i *index) eigenHeader() indexEntry {
 		panic(err)
 	}
 
-	return entry(b.Bytes())
+	return EntryBytes(b.Bytes())
 }
 
 func lead(name, fullVersion string) []byte {
