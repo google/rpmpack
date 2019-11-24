@@ -25,6 +25,7 @@ import (
 	"io"
 	"path"
 	"sort"
+	"time"
 
 	cpio "github.com/cavaliercoder/go-cpio"
 	"github.com/pkg/errors"
@@ -42,6 +43,7 @@ var (
 // RPMMetaData contains meta info about the whole package.
 type RPMMetaData struct {
 	Name,
+	Summary,
 	Description,
 	Version,
 	Release,
@@ -52,7 +54,9 @@ type RPMMetaData struct {
 	Packager,
 	Group,
 	Licence,
+	BuildHost,
 	Compressor string
+	BuildTime time.Time
 	Provides,
 	Obsoletes,
 	Suggests,
@@ -86,7 +90,7 @@ type RPM struct {
 	preun             string
 	postun            string
 	customTags        map[int]IndexEntry
-	customSigs         map[int]IndexEntry
+	customSigs        map[int]IndexEntry
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -259,6 +263,10 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagSize, EntryInt32([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, EntryString(r.Name))
 	h.Add(tagVersion, EntryString(r.Version))
+	h.Add(tagSummary, EntryString(r.Summary))
+	h.Add(tagDescription, EntryString(r.Description))
+	h.Add(tagBuildHost, EntryString(r.BuildHost))
+	h.Add(tagBuildTime, EntryInt32([]int32{int32(r.BuildTime.Unix())}))
 	h.Add(tagRelease, EntryString(r.Release))
 	h.Add(tagPayloadFormat, EntryString("cpio"))
 	h.Add(tagPayloadCompressor, EntryString(r.Compressor))
