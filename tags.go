@@ -29,6 +29,7 @@ const (
 	tagName        = 0x03e8 // 1000
 	tagVersion     = 0x03e9 // 1001
 	tagRelease     = 0x03ea // 1002
+	tagEpoch       = 0x03eb // 1003
 	tagSummary     = 0x03ec // 1004
 	tagDescription = 0x03ed // 1005
 	tagBuildTime   = 0x03ee // 1006

@@ -47,6 +47,7 @@ type RPMMetaData struct {
 	Description,
 	Version,
 	Release,
+	Epoch,
 	Arch,
 	OS,
 	Vendor,
@@ -247,6 +248,7 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, entry(r.Name))
 	h.Add(tagVersion, entry(r.Version))
+	h.Add(tagEpoch, entry(r.Epoch))
 	h.Add(tagSummary, entry(r.Summary))
 	h.Add(tagDescription, entry(r.Description))
 	h.Add(tagBuildHost, entry(r.BuildHost))
