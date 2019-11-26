@@ -91,9 +91,9 @@ func (r *Relations) AddToIndex(h *index, nameTag, versionTag, flagsTag int) erro
 		flags[idx] = uint32(relation.Sense)
 	}
 
-	h.Add(nameTag, entry(names))
-	h.Add(versionTag, entry(versions))
-	h.Add(flagsTag, entry(flags))
+	h.Add(nameTag, EntryStringSlice(names))
+	h.Add(versionTag, EntryStringSlice(versions))
+	h.Add(flagsTag, EntryUint32(flags))
 
 	return nil
 }

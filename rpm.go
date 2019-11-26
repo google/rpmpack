@@ -89,6 +89,8 @@ type RPM struct {
 	postin            string
 	preun             string
 	postun            string
+	customTags        map[int]IndexEntry
+	customSigs        map[int]IndexEntry
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -129,6 +131,8 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		compressedPayload: z,
 		cpio:              cpio.NewWriter(z),
 		files:             make(map[string]RPMFile),
+		customTags:        make(map[int]IndexEntry),
+		customSigs:        make(map[int]IndexEntry),
 	}
 
 	// A package must provide itself...
@@ -183,7 +187,8 @@ func (r *RPM) Write(w io.Writer) error {
 	if err := r.writeRelationIndexes(h); err != nil {
 		return err
 	}
-
+	// CustomTags must be the last to be added, because they can overwrite values.
+	h.AddEntries(r.customTags)
 	hb, err := h.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve header")
@@ -191,6 +196,7 @@ func (r *RPM) Write(w io.Writer) error {
 	// Write the signatures
 	s := newIndex(signatures)
 	r.writeSignatures(s, hb)
+	s.AddEntries(r.customSigs)
 	sb, err := s.Bytes()
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve signatures header")
@@ -213,9 +219,9 @@ func (r *RPM) Write(w io.Writer) error {
 
 // Only call this after the payload and header were written.
 func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
-	sigHeader.Add(sigSize, entry([]int32{int32(r.payload.Len() + len(regHeader))}))
-	sigHeader.Add(sigSHA256, entry(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
-	sigHeader.Add(sigPayloadSize, entry([]int32{int32(r.payloadSize)}))
+	sigHeader.Add(sigSize, EntryInt32([]int32{int32(r.payload.Len() + len(regHeader))}))
+	sigHeader.Add(sigSHA256, EntryString(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
+	sigHeader.Add(sigPayloadSize, EntryInt32([]int32{int32(r.payloadSize)}))
 }
 
 func (r *RPM) writeRelationIndexes(h *index) error {
@@ -242,63 +248,73 @@ func (r *RPM) writeRelationIndexes(h *index) error {
 	return nil
 }
 
+// AddCustomTag adds or overwrites a tag value in the index.
+func (r *RPM) AddCustomTag(tag int, e IndexEntry) {
+	r.customTags[tag] = e
+}
+
+// AddCustomSig adds or overwrites a signature tag value.
+func (r *RPM) AddCustomSig(tag int, e IndexEntry) {
+	r.customSigs[tag] = e
+}
+
 func (r *RPM) writeGenIndexes(h *index) {
-	h.Add(tagHeaderI18NTable, entry("C"))
-	h.Add(tagSize, entry([]int32{int32(r.payloadSize)}))
-	h.Add(tagName, entry(r.Name))
-	h.Add(tagVersion, entry(r.Version))
-	h.Add(tagSummary, entry(r.Summary))
-	h.Add(tagDescription, entry(r.Description))
-	h.Add(tagBuildHost, entry(r.BuildHost))
-	h.Add(tagBuildTime, entry([]int32{int32(r.BuildTime.Unix())}))
-	h.Add(tagRelease, entry(r.Release))
-	h.Add(tagPayloadFormat, entry("cpio"))
-	h.Add(tagPayloadCompressor, entry(r.Compressor))
-	h.Add(tagPayloadFlags, entry("9"))
-	h.Add(tagArch, entry(r.Arch))
-	h.Add(tagOS, entry(r.OS))
-	h.Add(tagVendor, entry(r.Vendor))
-	h.Add(tagLicence, entry(r.Licence))
-	h.Add(tagPackager, entry(r.Packager))
-	h.Add(tagGroup, entry(r.Group))
-	h.Add(tagURL, entry(r.URL))
-	h.Add(tagPayloadDigest, entry([]string{fmt.Sprintf("%x", sha256.Sum256(r.payload.Bytes()))}))
-	h.Add(tagPayloadDigestAlgo, entry([]int32{hashAlgoSHA256}))
+	h.Add(tagHeaderI18NTable, EntryString("C"))
+	h.Add(tagSize, EntryInt32([]int32{int32(r.payloadSize)}))
+	h.Add(tagName, EntryString(r.Name))
+	h.Add(tagVersion, EntryString(r.Version))
+	h.Add(tagSummary, EntryString(r.Summary))
+	h.Add(tagDescription, EntryString(r.Description))
+	h.Add(tagBuildHost, EntryString(r.BuildHost))
+	h.Add(tagBuildTime, EntryInt32([]int32{int32(r.BuildTime.Unix())}))
+	h.Add(tagRelease, EntryString(r.Release))
+	h.Add(tagPayloadFormat, EntryString("cpio"))
+	h.Add(tagPayloadCompressor, EntryString(r.Compressor))
+	h.Add(tagPayloadFlags, EntryString("9"))
+	h.Add(tagArch, EntryString(r.Arch))
+	h.Add(tagOS, EntryString(r.OS))
+	h.Add(tagVendor, EntryString(r.Vendor))
+	h.Add(tagLicence, EntryString(r.Licence))
+	h.Add(tagPackager, EntryString(r.Packager))
+	h.Add(tagGroup, EntryString(r.Group))
+	h.Add(tagURL, EntryString(r.URL))
+	h.Add(tagPayloadDigest, EntryStringSlice([]string{fmt.Sprintf("%x", sha256.Sum256(r.payload.Bytes()))}))
+	h.Add(tagPayloadDigestAlgo, EntryInt32([]int32{hashAlgoSHA256}))
 
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
-	h.Add(tagSourceRPM, entry(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
+	h.Add(tagSourceRPM, EntryString(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
 	if r.prein != "" {
-		h.Add(tagPrein, entry(r.prein))
-		h.Add(tagPreinProg, entry("/bin/sh"))
+		h.Add(tagPrein, EntryString(r.prein))
+		h.Add(tagPreinProg, EntryString("/bin/sh"))
 	}
 	if r.postin != "" {
-		h.Add(tagPostin, entry(r.postin))
-		h.Add(tagPostinProg, entry("/bin/sh"))
+		h.Add(tagPostin, EntryString(r.postin))
+		h.Add(tagPostinProg, EntryString("/bin/sh"))
 	}
 	if r.preun != "" {
-		h.Add(tagPreun, entry(r.preun))
-		h.Add(tagPreunProg, entry("/bin/sh"))
+		h.Add(tagPreun, EntryString(r.preun))
+		h.Add(tagPreunProg, EntryString("/bin/sh"))
 	}
 	if r.postun != "" {
-		h.Add(tagPostun, entry(r.postun))
-		h.Add(tagPostunProg, entry("/bin/sh"))
+		h.Add(tagPostun, EntryString(r.postun))
+		h.Add(tagPostunProg, EntryString("/bin/sh"))
 	}
 }
 
 // WriteFileIndexes writes file related index headers to the header
 func (r *RPM) writeFileIndexes(h *index) {
-	h.Add(tagBasenames, entry(r.basenames))
-	h.Add(tagDirindexes, entry(r.dirindexes))
-	h.Add(tagDirnames, entry(r.di.AllDirs()))
-	h.Add(tagFileSizes, entry(r.filesizes))
-	h.Add(tagFileModes, entry(r.filemodes))
-	h.Add(tagFileUserName, entry(r.fileowners))
-	h.Add(tagFileGroupName, entry(r.filegroups))
-	h.Add(tagFileMTimes, entry(r.filemtimes))
-	h.Add(tagFileDigests, entry(r.filedigests))
-	h.Add(tagFileLinkTos, entry(r.filelinktos))
-	h.Add(tagFileFlags, entry(r.fileflags))
+	h.Add(tagBasenames, EntryStringSlice(r.basenames))
+	h.Add(tagDirindexes, EntryUint32(r.dirindexes))
+	h.Add(tagDirnames, EntryStringSlice(r.di.AllDirs()))
+	h.Add(tagFileSizes, EntryUint32(r.filesizes))
+	h.Add(tagFileModes, EntryUint16(r.filemodes))
+	h.Add(tagFileUserName, EntryStringSlice(r.fileowners))
+	h.Add(tagFileGroupName, EntryStringSlice(r.filegroups))
+	h.Add(tagFileMTimes, EntryUint32(r.filemtimes))
+	h.Add(tagFileDigests, EntryStringSlice(r.filedigests))
+	h.Add(tagFileLinkTos, EntryStringSlice(r.filelinktos))
+	h.Add(tagFileFlags, EntryUint32(r.fileflags))
 
 	inodes := make([]int32, len(r.dirindexes))
 	digestAlgo := make([]int32, len(r.dirindexes))
@@ -314,11 +330,11 @@ func (r *RPM) writeFileIndexes(h *index) {
 		verifyFlags[ii] = int32(-1)
 		fileRDevs[ii] = int16(1)
 	}
-	h.Add(tagFileINodes, entry(inodes))
-	h.Add(tagFileDigestAlgo, entry(digestAlgo))
-	h.Add(tagFileVerifyFlags, entry(verifyFlags))
-	h.Add(tagFileRDevs, entry(fileRDevs))
-	h.Add(tagFileLangs, entry(fileLangs))
+	h.Add(tagFileINodes, EntryInt32(inodes))
+	h.Add(tagFileDigestAlgo, EntryInt32(digestAlgo))
+	h.Add(tagFileVerifyFlags, EntryInt32(verifyFlags))
+	h.Add(tagFileRDevs, EntryInt16(fileRDevs))
+	h.Add(tagFileLangs, EntryStringSlice(fileLangs))
 }
 
 // AddPrein adds a prein sciptlet
