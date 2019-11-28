@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 
 	"github.com/google/rpmpack"
@@ -34,6 +35,7 @@ var (
 	name        = flag.String("name", "", "the package name")
 	version     = flag.String("version", "", "the package version")
 	release     = flag.String("release", "", "the rpm release")
+	epoch       = flag.Uint64("epoch", 0, "the rpm epoch")
 	arch        = flag.String("arch", "noarch", "the rpm architecture")
 	compressor  = flag.String("compressor", "gzip", "the rpm compressor")
 	osName      = flag.String("os", "linux", "the rpm os")
@@ -76,6 +78,11 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
+	if *epoch > math.MaxUint32 {
+		fmt.Fprintln(os.Stderr, "epoch has to be less than or equal to 4294967295")
+		flag.Usage()
+		os.Exit(2)
+	}
 
 	var i io.Reader
 	switch flag.NArg() {
@@ -110,6 +117,7 @@ func main() {
 			Name:        *name,
 			Version:     *version,
 			Release:     *release,
+			Epoch:       uint32(*epoch),
 			Arch:        *arch,
 			OS:          *osName,
 			Vendor:      *vendor,
