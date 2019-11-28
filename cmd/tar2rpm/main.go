@@ -22,7 +22,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/google/rpmpack"
+	"github.com/marcsauter/rpmpack" // TODO:
 )
 
 var (
