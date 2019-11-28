@@ -71,7 +71,15 @@ func TestEntry(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			e := entry(tc.value)
+			var e IndexEntry
+			switch v := tc.value.(type) {
+			case []string:
+				e = EntryStringSlice(v)
+			case string:
+				e = EntryString(v)
+			case []int32:
+				e = EntryInt32(v)
+			}
 			gotBytes := e.indexBytes(tc.tag, tc.offset)
 			if d := cmp.Diff(tc.wantIndexBytes, fmt.Sprintf("%x", gotBytes)); d != "" {
 				t.Errorf("entry.indexBytes() unexpected value (want->got):\n%s", d)
@@ -85,8 +93,10 @@ func TestEntry(t *testing.T) {
 
 func TestIndex(t *testing.T) {
 	i := newIndex(0x3e)
-	i.Add(0x1111, entry([]uint16{0x4444, 0x8888, 0xcccc}))
-	i.Add(0x2222, entry([]uint32{0x3333, 0x5555}))
+	i.AddEntries(map[int]IndexEntry{
+		0x1111: EntryUint16([]uint16{0x4444, 0x8888, 0xcccc}),
+		0x2222: EntryUint32([]uint32{0x3333, 0x5555}),
+	})
 	got, err := i.Bytes()
 	if err != nil {
 		t.Errorf("i.Bytes() returned error: %v", err)
