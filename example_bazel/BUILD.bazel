@@ -79,7 +79,7 @@ docker_diff(
 )
 
 docker_diff(
-    name = "fedora_V",
+    name = "fedora_epoch",
     base = ":fedora_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{EPOCH}\n'",
     golden = ":golden_Epoch.txt",
