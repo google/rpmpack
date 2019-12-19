@@ -79,7 +79,7 @@ func main() {
 		os.Exit(2)
 	}
 	if *epoch > math.MaxUint32 {
-		fmt.Fprintln(os.Stderr, "epoch has to be less than or equal to 4294967295")
+		fmt.Fprintf(os.Stderr, "epoch has to be less than than %d\n", math.MaxUint32)
 		flag.Usage()
 		os.Exit(2)
 	}
