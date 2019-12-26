@@ -56,6 +56,7 @@ type RPMMetaData struct {
 	Licence,
 	BuildHost,
 	Compressor string
+	Epoch     uint32
 	BuildTime time.Time
 	Provides,
 	Obsoletes,
@@ -263,6 +264,7 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagSize, EntryInt32([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, EntryString(r.Name))
 	h.Add(tagVersion, EntryString(r.Version))
+	h.Add(tagEpoch, EntryUint32([]uint32{r.Epoch}))
 	h.Add(tagSummary, EntryString(r.Summary))
 	h.Add(tagDescription, EntryString(r.Description))
 	h.Add(tagBuildHost, EntryString(r.BuildHost))

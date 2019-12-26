@@ -21,6 +21,7 @@ pkg_tar2rpm(
     pkg_name = "rpmtest",
     prein = "echo \"This is preinst\" > /tmp/preinst.txt",
     release = "3.4",
+    epoch = 42,
     version = "1.2",
 )
 
@@ -54,6 +55,13 @@ docker_diff(
     golden = ":golden_preinst.txt",
 )
 
+docker_diff(
+    name = "centos_epoch",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{EPOCH}\n'",
+    golden = ":golden_Epoch.txt",
+)
+
 container_image(
     name = "fedora_with_rpm",
     testonly = True,
@@ -68,4 +76,11 @@ docker_diff(
     base = ":fedora_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -Vv rpmtest",
     golden = ":golden_V.txt",
+)
+
+docker_diff(
+    name = "fedora_epoch",
+    base = ":fedora_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{EPOCH}\n'",
+    golden = ":golden_Epoch.txt",
 )
