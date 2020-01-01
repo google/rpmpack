@@ -92,6 +92,7 @@ type RPM struct {
 	postun            string
 	customTags        map[int]IndexEntry
 	customSigs        map[int]IndexEntry
+	pgpSigner         func([]byte) ([]byte, error)
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -202,7 +203,10 @@ func (r *RPM) Write(w io.Writer) error {
 	}
 	// Write the signatures
 	s := newIndex(signatures)
-	r.writeSignatures(s, hb)
+	if err := r.writeSignatures(s, hb); err != nil {
+		return errors.Wrap(err, "failed to create signatures")
+	}
+
 	s.AddEntries(r.customSigs)
 	sb, err := s.Bytes()
 	if err != nil {
@@ -224,11 +228,28 @@ func (r *RPM) Write(w io.Writer) error {
 
 }
 
+// AddPGPSigner registers a function that will accept the header and payload as bytes,
+// and return a signature as bytes. The function should simulate what gpg does,
+// probably by using golang.org/x/crypto/openpgp or by forking a gpg process.
+func (r *RPM) AddPGPSigner(f func([]byte) ([]byte, error)) {
+	r.pgpSigner = f
+}
+
 // Only call this after the payload and header were written.
-func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) {
+func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
 	sigHeader.Add(sigSize, EntryInt32([]int32{int32(r.payload.Len() + len(regHeader))}))
 	sigHeader.Add(sigSHA256, EntryString(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
 	sigHeader.Add(sigPayloadSize, EntryInt32([]int32{int32(r.payloadSize)}))
+	if r.pgpSigner != nil {
+		body := append([]byte{}, regHeader...)
+		body = append(body, r.payload.Bytes()...)
+		s, err := r.pgpSigner(body)
+		if err != nil {
+			return errors.Wrap(err, "call to signer failed")
+		}
+		sigHeader.Add(sigPGP, EntryBytes(s))
+	}
+	return nil
 }
 
 func (r *RPM) writeRelationIndexes(h *index) error {
