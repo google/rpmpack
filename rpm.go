@@ -372,8 +372,8 @@ func (r *RPM) writeFile(f RPMFile) error {
 	dir, file := path.Split(f.Name)
 	r.dirindexes = append(r.dirindexes, r.di.Get(dir))
 	r.basenames = append(r.basenames, file)
-	r.fileowners = append(r.fileowners, f.Group)
-	r.filegroups = append(r.filegroups, f.Owner)
+	r.fileowners = append(r.fileowners, f.Owner)
+	r.filegroups = append(r.filegroups, f.Group)
 	r.filemtimes = append(r.filemtimes, f.MTime)
 	r.fileflags = append(r.fileflags, uint32(f.Type))
 
