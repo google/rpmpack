@@ -42,7 +42,7 @@ API documentation for `rpmpack` can be found in [![GoDoc](https://godoc.org/gith
 ```go
 import "github.com/google/rpmpack"
 ...
-r, err := rpmpack.NewRPM(rpmpack.RPMMetadata{Name: "example", Version: "3"})
+r, err := rpmpack.NewRPM(rpmpack.RPMMetaData{Name: "example", Version: "3"})
 if err != nil {
   ...
 }
