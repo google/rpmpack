@@ -184,7 +184,13 @@ func (r *RPM) Write(w io.Writer) error {
 	// Write the regular header.
 	h := newIndex(immutable)
 	r.writeGenIndexes(h)
-	r.writeFileIndexes(h)
+
+	// do not write file indexes if there are no files (meta package)
+	// doing so will result in an invalid package
+	if (len(r.files)) > 0 {
+		r.writeFileIndexes(h)
+	}
+
 	if err := r.writeRelationIndexes(h); err != nil {
 		return err
 	}
