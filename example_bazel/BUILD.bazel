@@ -84,3 +84,33 @@ docker_diff(
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{EPOCH}\n'",
     golden = ":golden_Epoch.txt",
 )
+
+pkg_tar(
+    name = "rpmmetatest-tar",
+)
+
+pkg_tar2rpm(
+    name = "rpmmetatest",
+    data = ":rpmmetatest-tar",
+    pkg_name = "rpmmetatest",
+    release = "3.4",
+    epoch = 42,
+    version = "1.2",
+    requires = ["bash"]
+)
+
+container_image(
+    name = "centos_with_metarpm",
+    testonly = True,
+    base = "@centos//image",
+    directory = "/root/",
+    files = [":rpmmetatest.rpm"],
+    legacy_run_behavior = False,
+)
+
+docker_diff(
+    name = "centos_meta_deps",
+    base = ":centos_with_metarpm",
+    cmd = "echo ===marker=== && rpm -i /root/rpmmetatest.rpm && rpm -qpR /root/rpmmetatest.rpm",
+    golden = ":golden_meta_deps.txt",
+)
