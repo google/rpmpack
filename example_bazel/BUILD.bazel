@@ -96,7 +96,7 @@ pkg_tar2rpm(
     release = "3.4",
     epoch = 42,
     version = "1.2",
-    requires = ["bash"]
+    requires = ["bash"],
 )
 
 container_image(
