@@ -38,28 +38,34 @@ docker_diff(
     name = "centos_V",
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -Vv rpmtest",
-    golden = ":golden_V.txt",
+    golden = """
+.........    /var
+.........    /var/lib
+.........    /var/lib/rpmpack
+.........    /var/lib/rpmpack/content1.txt""",
 )
 
 docker_diff(
     name = "centos_ls",
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && ls -l /var/lib/rpmpack",
-    golden = ":golden_ls.txt",
+    golden = """
+total 4
+-rw-r--r-- 1 root root 22 Jan  1  2000 content1.txt""",
 )
 
 docker_diff(
     name = "centos_preinst",
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && cat /tmp/preinst.txt",
-    golden = ":golden_preinst.txt",
+    golden = "This is preinst",
 )
 
 docker_diff(
     name = "centos_epoch",
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{EPOCH}\n'",
-    golden = ":golden_Epoch.txt",
+    golden = "42",
 )
 
 container_image(
@@ -75,14 +81,18 @@ docker_diff(
     name = "fedora_V",
     base = ":fedora_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -Vv rpmtest",
-    golden = ":golden_V.txt",
+    golden = """
+.........    /var
+.........    /var/lib
+.........    /var/lib/rpmpack
+.........    /var/lib/rpmpack/content1.txt""",
 )
 
 docker_diff(
     name = "fedora_epoch",
     base = ":fedora_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{EPOCH}\n'",
-    golden = ":golden_Epoch.txt",
+    golden = "42",
 )
 
 pkg_tar(
@@ -112,5 +122,5 @@ docker_diff(
     name = "centos_meta_deps",
     base = ":centos_with_metarpm",
     cmd = "echo ===marker=== && rpm -i /root/rpmmetatest.rpm && rpm -qpR /root/rpmmetatest.rpm",
-    golden = ":golden_meta_deps.txt",
+    golden = "bash",
 )

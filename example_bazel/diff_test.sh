@@ -26,12 +26,17 @@ diff_test () {
     return 1
   fi
  
-  if ! diff "$want" <(echo "$got"); then
+  if ! diff <( echo "$want") <(echo "$got"); then
     echo "${cmd}: diff failed or differences found" >&2
     return 1
   fi
   return 0
 }
 
-diff_test {CMD} {GOLDEN}
+read -r -d '' GOLDEN_STR << EOF
+{GOLDEN}
+EOF
+
+diff_test "{CMD}" "${GOLDEN_STR}"
+
 exit $?
