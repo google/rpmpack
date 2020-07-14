@@ -25,12 +25,20 @@ pkg_tar2rpm(
     version = "1.2",
 )
 
+pkg_tar2rpm(
+    name = "rpmtest_withtime",
+    data = ":rpmtest-tar",
+    pkg_name = "rpmtest_withtime",
+    version = "1.2",
+    build_time = "17",
+)
+
 container_image(
     name = "centos_with_rpm",
     testonly = True,
     base = "@centos//image",
     directory = "/root/",
-    files = [":rpmtest.rpm"],
+    files = [":rpmtest.rpm", ":rpmtest_withtime"],
     legacy_run_behavior = False,
 )
 
@@ -123,4 +131,18 @@ docker_diff(
     base = ":centos_with_metarpm",
     cmd = "echo ===marker=== && rpm -i /root/rpmmetatest.rpm && rpm -qpR /root/rpmmetatest.rpm",
     golden = "bash",
+)
+
+docker_diff(
+    name = "centos_empty_timestamp",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker=== && rpm -i /root/rpmtest.rpm && rpm -q rpmtest --queryformat '%{BUILDTIME}\n'",
+    golden = "(none)",
+)
+
+docker_diff(
+    name = "centos_with_timestamp",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker=== && rpm -i /root/rpmtest_withtime.rpm && rpm -q rpmtest_withtime --queryformat '%{BUILDTIME}\n'",
+    golden = "17",
 )

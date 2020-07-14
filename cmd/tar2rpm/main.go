@@ -21,6 +21,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"time"
 
 	"github.com/google/rpmpack"
 )
@@ -37,6 +38,7 @@ var (
 	release     = flag.String("release", "", "the rpm release")
 	epoch       = flag.Uint64("epoch", 0, "the rpm epoch")
 	arch        = flag.String("arch", "noarch", "the rpm architecture")
+	buildTime   = flag.Int64("build_time", 0, "the build_time unix timestamp")
 	compressor  = flag.String("compressor", "gzip", "the rpm compressor")
 	osName      = flag.String("os", "linux", "the rpm os")
 	summary     = flag.String("summary", "", "the rpm summary")
@@ -83,6 +85,10 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
+	var buildTimeStamp time.Time
+	if *buildTime != 0 {
+		buildTimeStamp = time.Unix(*buildTime, 0)
+	}
 
 	var i io.Reader
 	switch flag.NArg() {
@@ -118,6 +124,7 @@ func main() {
 			Version:     *version,
 			Release:     *release,
 			Epoch:       uint32(*epoch),
+			BuildTime:   buildTimeStamp,
 			Arch:        *arch,
 			OS:          *osName,
 			Vendor:      *vendor,

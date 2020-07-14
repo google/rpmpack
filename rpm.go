@@ -274,7 +274,11 @@ func (r *RPM) writeGenIndexes(h *index) {
 	h.Add(tagSummary, EntryString(r.Summary))
 	h.Add(tagDescription, EntryString(r.Description))
 	h.Add(tagBuildHost, EntryString(r.BuildHost))
-	h.Add(tagBuildTime, EntryInt32([]int32{int32(r.BuildTime.Unix())}))
+	if !r.BuildTime.IsZero() {
+		// time.Time zero value is confusing, avoid if not supplied
+		// see https://github.com/google/rpmpack/issues/43
+		h.Add(tagBuildTime, EntryInt32([]int32{int32(r.BuildTime.Unix())}))
+	}
 	h.Add(tagRelease, EntryString(r.Release))
 	h.Add(tagPayloadFormat, EntryString("cpio"))
 	h.Add(tagPayloadCompressor, EntryString(r.Compressor))

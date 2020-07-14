@@ -10,6 +10,8 @@ def _pkg_tar2rpm_impl(ctx):
     args.add("--preun", ctx.attr.preun)
     args.add("--postun", ctx.attr.postun)
     args.add_all("--requires", ctx.attr.requires)
+    if ctx.attr.build_time != "":
+        args.add("--build_time", ctx.attr.build_time)
     args.add("--file", ctx.outputs.out)
     args.add(ctx.file.data)
     ctx.actions.run(
@@ -34,6 +36,7 @@ pkg_tar2rpm = rule(
         "preun": attr.string(),
         "postun": attr.string(),
         "requires": attr.string_list(),
+        "build_time": attr.string(),
         "tar2rpm": attr.label(
             default = Label("//cmd/tar2rpm"),
             cfg = "host",
