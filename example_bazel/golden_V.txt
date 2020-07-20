@@ -1,4 +1,0 @@
-.........    /var
-.........    /var/lib
-.........    /var/lib/rpmpack
-.........    /var/lib/rpmpack/content1.txt

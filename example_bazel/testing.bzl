@@ -6,7 +6,7 @@ def _diff_test_impl(ctx):
         output = ctx.outputs.file,
         substitutions = {
             "{CMD}": ctx.executable.cmd.short_path,
-            "{GOLDEN}": ctx.file.golden.short_path,
+            "{GOLDEN}": ctx.attr.golden,
         },
     )
 
@@ -18,9 +18,8 @@ diff_test_expand = rule(
             executable = True,
             cfg = "host",
         ),
-        "golden": attr.label(
+        "golden": attr.string(
             mandatory = True,
-            allow_single_file = True,
         ),
         "_template": attr.label(
             default = "//:diff_test.sh",
@@ -48,5 +47,5 @@ def docker_diff(name, base, cmd, golden):
     native.sh_test(
         name = name + "_diff_test",
         srcs = [":%s_diff" % name],
-        data = [":%s" % name, golden],
+        data = [":%s" % name],
     )

@@ -35,6 +35,7 @@ go_test(
         "dir_test.go",
         "file_types_test.go",
         "header_test.go",
+        "rpm_test.go",
         "sense_test.go",
         "tar_test.go",
     ],
