@@ -1,6 +1,7 @@
 package rpmpack
 
-type fileType int32
+// FileType is the type of a file inside a RPM package.
+type FileType int32
 
 // https://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/pkgformat.html#AEN27560
 // The RPMFile.Type tag value shall identify various characteristics of the file in the payload that it describes.
@@ -8,7 +9,7 @@ type fileType int32
 // the bitwise inclusive or of one or more of the following values. Some of these combinations may make no sense
 const (
 	// GenericFile is just a basic file in an RPM
-	GenericFile fileType = 1 << iota >> 1
+	GenericFile FileType = 1 << iota >> 1
 	// ConfigFile is a configuration file, and an existing file should be saved during a
 	// package upgrade operation and not removed during a package removal operation.
 	ConfigFile
@@ -42,5 +43,5 @@ type RPMFile struct {
 	Owner string
 	Group string
 	MTime uint32
-	Type  fileType
+	Type  FileType
 }
