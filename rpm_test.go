@@ -8,8 +8,7 @@ import (
 func TestFileOwner(t *testing.T) {
 	r, err := NewRPM(RPMMetaData{})
 	if err != nil {
-		t.Errorf("NewRpm returned error %v", err)
-		t.FailNow()
+		t.Fatalf("NewRPM returned error %v", err)
 	}
 	group := "testGroup"
 	user := "testUser"
@@ -22,7 +21,7 @@ func TestFileOwner(t *testing.T) {
 	})
 
 	if err := r.Write(ioutil.Discard); err != nil {
-		t.Errorf("NewRpm returned error %v", err)
+		t.Errorf("NewRPM returned error %v", err)
 	}
 	if r.fileowners[0] != user {
 		t.Errorf("File owner shoud be %s but is %s", user, r.fileowners[0])
@@ -31,17 +30,18 @@ func TestFileOwner(t *testing.T) {
 		t.Errorf("File owner shoud be %s but is %s", group, r.filegroups[0])
 	}
 }
+
 // https://github.com/google/rpmpack/issues/49
 func Test100644(t *testing.T) {
 	r, err := NewRPM(RPMMetaData{})
 	if err != nil {
-		t.Errorf("NewRpm returned error %v", err)
+		t.Errorf("NewRPM returned error %v", err)
 		t.FailNow()
 	}
 	r.AddFile(RPMFile{
-		Name:  "/usr/local/hello",
-		Body:  []byte("content of the file"),
-		Mode: 0o0100644,
+		Name: "/usr/local/hello",
+		Body: []byte("content of the file"),
+		Mode: 0100644,
 	})
 
 	if err := r.Write(ioutil.Discard); err != nil {
