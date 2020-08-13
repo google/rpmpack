@@ -35,8 +35,7 @@ func TestFileOwner(t *testing.T) {
 func Test100644(t *testing.T) {
 	r, err := NewRPM(RPMMetaData{})
 	if err != nil {
-		t.Errorf("NewRPM returned error %v", err)
-		t.FailNow()
+		t.Fatalf("NewRPM returned error %v", err)
 	}
 	r.AddFile(RPMFile{
 		Name: "/usr/local/hello",
