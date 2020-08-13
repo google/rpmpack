@@ -394,7 +394,7 @@ func (r *RPM) writeFile(f RPMFile) error {
 		r.filedigests = append(r.filedigests, "")
 		r.filelinktos = append(r.filelinktos, "")
 		links = 2
-	case f.Mode&0120000 != 0: //  symlink
+	case f.Mode&0120000 == 0120000: //  symlink
 		r.filesizes = append(r.filesizes, uint32(len(f.Body)))
 		r.filedigests = append(r.filedigests, "")
 		r.filelinktos = append(r.filelinktos, string(f.Body))
