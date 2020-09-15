@@ -66,7 +66,7 @@ func main() {
 			Owner: "root",
 			Group: "root",
 		})
-	r.AddPGPSigner(func([]byte) ([]byte, error) {
+	r.SetPGPSigner(func([]byte) ([]byte, error) {
 		return []byte(`this is not a signature`), nil
 	})
 	if err := r.Write(os.Stdout); err != nil {

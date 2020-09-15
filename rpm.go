@@ -228,10 +228,10 @@ func (r *RPM) Write(w io.Writer) error {
 
 }
 
-// AddPGPSigner registers a function that will accept the header and payload as bytes,
+// SetPGPSigner registers a function that will accept the header and payload as bytes,
 // and return a signature as bytes. The function should simulate what gpg does,
 // probably by using golang.org/x/crypto/openpgp or by forking a gpg process.
-func (r *RPM) AddPGPSigner(f func([]byte) ([]byte, error)) {
+func (r *RPM) SetPGPSigner(f func([]byte) ([]byte, error)) {
 	r.pgpSigner = f
 }
 
