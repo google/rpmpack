@@ -21,6 +21,7 @@ const (
 	// Signature tags are obiously overlapping regular header tags..
 	sigSHA256      = 0x0111 // 273
 	sigSize        = 0x03e8 // 1000
+	sigPGP         = 0x03ea // 1002
 	sigPayloadSize = 0x03ef // 1007
 
 	// https://github.com/rpm-software-management/rpm/blob/92eadae94c48928bca90693ad63c46ceda37d81f/rpmio/rpmpgp.h#L258
