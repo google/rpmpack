@@ -66,6 +66,14 @@ func main() {
 			Owner: "root",
 			Group: "root",
 		})
+	r.AddFile(
+		rpmpack.RPMFile{
+			Name:  "/var/lib/rpmpack/sample4_ghost.txt",
+			Mode:  0644,
+			Owner: "root",
+			Group: "root",
+			Type:  rpmpack.GhostFile,
+		})
 	r.SetPGPSigner(func([]byte) ([]byte, error) {
 		return []byte(`this is not a signature`), nil
 	})

@@ -426,6 +426,11 @@ func (r *RPM) writeFile(f RPMFile) error {
 		r.filelinktos = append(r.filelinktos, "")
 	}
 	r.filemodes = append(r.filemodes, uint16(f.Mode))
+
+	// Ghost files have no payload
+	if f.Type == GhostFile {
+		return nil
+	}
 	return r.writePayload(f, links)
 }
 

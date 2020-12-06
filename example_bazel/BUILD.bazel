@@ -93,6 +93,24 @@ docker_diff(
     golden = "74686973206973206e6f742061207369676e6174757265",
 )
 
+docker_diff(
+    name = "centos_rpmsample_ghost_provides",
+    base = ":centos_with_rpmsample_executable",
+    cmd = "echo ===marker=== && /root/rpmsample > /root/rpmsample.rpm && rpm -i /root/rpmsample.rpm && rpm -q --whatprovides /var/lib/rpmpack/sample4_ghost.txt",
+    golden = "rpmsample-0.1-A.noarch",
+)
+
+docker_diff(
+    name = "centos_rpmsample_ghost_not_on_fs",
+    base = ":centos_with_rpmsample_executable",
+    cmd = "echo ===marker=== && /root/rpmsample > /root/rpmsample.rpm && rpm -i /root/rpmsample.rpm && ls /var/lib/rpmpack",
+    golden = """
+sample.txt
+sample2.txt
+sample3_link.txt
+""",
+)
+
 container_image(
     name = "fedora_with_rpm",
     testonly = True,
