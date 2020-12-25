@@ -241,13 +241,20 @@ func (r *RPM) writeSignatures(sigHeader *index, regHeader []byte) error {
 	sigHeader.Add(sigSHA256, EntryString(fmt.Sprintf("%x", sha256.Sum256(regHeader))))
 	sigHeader.Add(sigPayloadSize, EntryInt32([]int32{int32(r.payloadSize)}))
 	if r.pgpSigner != nil {
-		body := append([]byte{}, regHeader...)
-		body = append(body, r.payload.Bytes()...)
-		s, err := r.pgpSigner(body)
+		// For sha 256 you need to sign the header and payload separately
+		header := append([]byte{}, regHeader...)
+		headerSig, err := r.pgpSigner(header)
 		if err != nil {
 			return errors.Wrap(err, "call to signer failed")
 		}
-		sigHeader.Add(sigPGP, EntryBytes(s))
+		sigHeader.Add(sigRSA, EntryBytes(headerSig))
+
+		body := append(header, r.payload.Bytes()...)
+		bodySig, err := r.pgpSigner(body)
+		if err != nil {
+			return errors.Wrap(err, "call to signer failed")
+		}
+		sigHeader.Add(sigPGP, EntryBytes(bodySig))
 	}
 	return nil
 }
