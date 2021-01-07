@@ -27,10 +27,10 @@ pkg_tar2rpm(
 
 pkg_tar2rpm(
     name = "rpmtest_withtime",
+    build_time = "17",
     data = ":rpmtest-tar",
     pkg_name = "rpmtest_withtime",
     version = "1.2",
-    build_time = "17",
 )
 
 container_image(
@@ -38,7 +38,10 @@ container_image(
     testonly = True,
     base = "@centos//image",
     directory = "/root/",
-    files = [":rpmtest.rpm", ":rpmtest_withtime"],
+    files = [
+        ":rpmtest.rpm",
+        ":rpmtest_withtime",
+    ],
     legacy_run_behavior = False,
 )
 
@@ -86,9 +89,9 @@ container_image(
 )
 
 docker_diff(
-    name = "centos_rpmsample",
+    name = "centos_rpmsample_signed",
     base = ":centos_with_rpmsample_executable",
-    cmd = "echo ===marker=== && /root/rpmsample > /root/rpmsample.rpm && rpm -i /root/rpmsample.rpm && rpm -q rpmsample --queryformat '%{SIGPGP}\n'",
+    cmd = "echo ===marker=== && /root/rpmsample -sign > /root/rpmsample.rpm && rpm --nosignature -i /root/rpmsample.rpm && rpm --nosignature -q rpmsample --queryformat '%{SIGPGP}\n'",
     # "74686973206973206e6f742061207369676e6174757265" is "this is not a signature" in hex.
     golden = "74686973206973206e6f742061207369676e6174757265",
 )
@@ -145,11 +148,11 @@ pkg_tar(
 pkg_tar2rpm(
     name = "rpmmetatest",
     data = ":rpmmetatest-tar",
+    epoch = 42,
     pkg_name = "rpmmetatest",
     release = "3.4",
-    epoch = 42,
-    version = "1.2",
     requires = ["bash"],
+    version = "1.2",
 )
 
 container_image(

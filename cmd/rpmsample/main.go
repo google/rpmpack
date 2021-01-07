@@ -18,6 +18,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 
@@ -25,6 +26,9 @@ import (
 )
 
 func main() {
+
+	sign := flag.Bool("sign", false, "sign the package with a fake sig")
+	flag.Parse()
 
 	r, err := rpmpack.NewRPM(rpmpack.RPMMetaData{
 		Name:    "rpmsample",
@@ -74,9 +78,11 @@ func main() {
 			Group: "root",
 			Type:  rpmpack.GhostFile,
 		})
-	r.SetPGPSigner(func([]byte) ([]byte, error) {
-		return []byte(`this is not a signature`), nil
-	})
+	if *sign {
+		r.SetPGPSigner(func([]byte) ([]byte, error) {
+			return []byte(`this is not a signature`), nil
+		})
+	}
 	if err := r.Write(os.Stdout); err != nil {
 		log.Fatalf("write failed: %v", err)
 	}
