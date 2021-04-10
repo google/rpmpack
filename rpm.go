@@ -90,6 +90,8 @@ type RPM struct {
 	postin            string
 	preun             string
 	postun            string
+	pretrans          string
+	posttrans         string
 	customTags        map[int]IndexEntry
 	customSigs        map[int]IndexEntry
 	pgpSigner         func([]byte) ([]byte, error)
@@ -324,6 +326,10 @@ func (r *RPM) writeGenIndexes(h *index) {
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, EntryString(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
+	if r.pretrans != "" {
+		h.Add(tagPretrans, EntryString(r.pretrans))
+		h.Add(tagPretransProg, EntryString("/bin/sh"))
+	}
 	if r.prein != "" {
 		h.Add(tagPrein, EntryString(r.prein))
 		h.Add(tagPreinProg, EntryString("/bin/sh"))
@@ -339,6 +345,10 @@ func (r *RPM) writeGenIndexes(h *index) {
 	if r.postun != "" {
 		h.Add(tagPostun, EntryString(r.postun))
 		h.Add(tagPostunProg, EntryString("/bin/sh"))
+	}
+	if r.posttrans != "" {
+		h.Add(tagPosttrans, EntryString(r.posttrans))
+		h.Add(tagPosttransProg, EntryString("/bin/sh"))
 	}
 }
 
@@ -377,24 +387,34 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileLangs, EntryStringSlice(fileLangs))
 }
 
-// AddPrein adds a prein sciptlet
+// AddPretrans adds a pretrans scriptlet
+func (r *RPM) AddPretrans(s string) {
+	r.pretrans = s
+}
+
+// AddPrein adds a prein scriptlet
 func (r *RPM) AddPrein(s string) {
 	r.prein = s
 }
 
-// AddPostin adds a postin sciptlet
+// AddPostin adds a postin scriptlet
 func (r *RPM) AddPostin(s string) {
 	r.postin = s
 }
 
-// AddPreun adds a preun sciptlet
+// AddPreun adds a preun scriptlet
 func (r *RPM) AddPreun(s string) {
 	r.preun = s
 }
 
-// AddPostun adds a postun sciptlet
+// AddPostun adds a postun scriptlet
 func (r *RPM) AddPostun(s string) {
 	r.postun = s
+}
+
+// AddPosttrans adds a posttrans scriptlet
+func (r *RPM) AddPosttrans(s string) {
+	r.posttrans = s
 }
 
 // AddFile adds an RPMFile to an existing rpm.

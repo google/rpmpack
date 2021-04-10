@@ -85,6 +85,10 @@ const (
 	tagPayloadFormat     = 0x0464 // 1124
 	tagPayloadCompressor = 0x0465 // 1125
 	tagPayloadFlags      = 0x0466 // 1126
+	tagPretrans          = 0x047f // 1151
+	tagPosttrans         = 0x0480 // 1152
+	tagPretransProg      = 0x0481 // 1153
+	tagPosttransProg     = 0x0482 // 1154
 	tagFileDigestAlgo    = 0x1393 // 5011
 	tagRecommends        = 0x13b6 // 5046
 	tagRecommendVersion  = 0x13b7 // 5047
