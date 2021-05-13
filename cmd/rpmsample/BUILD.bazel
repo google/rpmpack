@@ -1,15 +1,15 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "rpmsample_lib",
     srcs = ["main.go"],
     importpath = "github.com/google/rpmpack/cmd/rpmsample",
     visibility = ["//visibility:private"],
-    deps = ["//:go_default_library"],
+    deps = ["//:rpmpack"],
 )
 
 go_binary(
     name = "rpmsample",
-    embed = [":go_default_library"],
+    embed = [":rpmsample_lib"],
     visibility = ["//visibility:public"],
 )
