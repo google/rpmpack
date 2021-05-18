@@ -6,10 +6,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/google/rpmpack
+# gazelle:go_naming_convention import_alias
 gazelle(name = "gazelle")
 
 go_library(
-    name = "go_default_library",
+    name = "rpmpack",
     srcs = [
         "dir.go",
         "file_types.go",
@@ -30,7 +31,7 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "rpmpack_test",
     srcs = [
         "dir_test.go",
         "file_types_test.go",
@@ -39,6 +40,12 @@ go_test(
         "sense_test.go",
         "tar_test.go",
     ],
-    embed = [":go_default_library"],
+    embed = [":rpmpack"],
     deps = ["@com_github_google_go_cmp//cmp:go_default_library"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":rpmpack",
+    visibility = ["//visibility:public"],
 )
