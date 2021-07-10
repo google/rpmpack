@@ -4,6 +4,8 @@ def _pkg_tar2rpm_impl(ctx):
     args.add("--name", ctx.attr.pkg_name)
     args.add("--version", ctx.attr.version)
     args.add("--release", ctx.attr.release)
+    args.add("--arch", ctx.attr.arch)
+    args.add("--packager", ctx.attr.packager)
     args.add("--epoch", ctx.attr.epoch)
     args.add("--prein", ctx.attr.prein)
     args.add("--postin", ctx.attr.postin)
@@ -30,6 +32,8 @@ pkg_tar2rpm = rule(
         "pkg_name": attr.string(mandatory = True),
         "version": attr.string(mandatory = True),
         "release": attr.string(),
+        "arch": attr.string(),
+        "packager": attr.string(),
         "epoch": attr.int(),
         "prein": attr.string(),
         "postin": attr.string(),
