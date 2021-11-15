@@ -63,10 +63,12 @@ func Test100644(t *testing.T) {
 
 func TestCompression(t *testing.T) {
 	testCases := []struct {
+		Type           string
 		Compressors    []string
 		ExpectedWriter io.Writer
 	}{
 		{
+			Type: "gzip",
 			Compressors: []string{
 				"", "gzip", "gzip:1", "gzip:2", "gzip:3",
 				"gzip:4", "gzip:5", "gzip:6", "gzip:7", "gzip:8", "gzip:9",
@@ -74,26 +76,32 @@ func TestCompression(t *testing.T) {
 			ExpectedWriter: &gzip.Writer{},
 		},
 		{
+			Type:           "gzip",
 			Compressors:    []string{"gzip:fast", "gzip:10"},
 			ExpectedWriter: nil, // gzip requires an integer level from -2 to 9
 		},
 		{
+			Type:           "lzma",
 			Compressors:    []string{"lzma"},
 			ExpectedWriter: &lzma.Writer{},
 		},
 		{
+			Type:           "lzma",
 			Compressors:    []string{"lzma:fast", "lzma:1"},
 			ExpectedWriter: nil, // lzma does not support specifying the compression level
 		},
 		{
+			Type:           "xz",
 			Compressors:    []string{"xz"},
 			ExpectedWriter: &xz.Writer{},
 		},
 		{
+			Type:           "xz",
 			Compressors:    []string{"xz:fast", "xz:1"},
 			ExpectedWriter: nil, // xz does not support specifying the compression level
 		},
 		{
+			Type: "zstd",
 			Compressors: []string{
 				"zstd", "zstd:fastest", "zstd:default", "zstd:better",
 				"zstd:best", "zstd:BeSt",
@@ -101,6 +109,7 @@ func TestCompression(t *testing.T) {
 			ExpectedWriter: &zstd.Encoder{},
 		},
 		{
+			Type:           "zstd",
 			Compressors:    []string{"zstd:1", "xz:worst"},
 			ExpectedWriter: nil, // zstd does not support integer compression level
 		},
@@ -124,6 +133,11 @@ func TestCompression(t *testing.T) {
 
 				if testCase.ExpectedWriter == nil {
 					t.Fatalf("compressor %q should have produced an error", compressor)
+				}
+
+				if r.RPMMetaData.Compressor != testCase.Type {
+					t.Fatalf("expected compressor %q, got %q", compressor,
+						r.RPMMetaData.Compressor)
 				}
 
 				expectedWriterType := reflect.Indirect(reflect.ValueOf(

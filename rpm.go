@@ -114,10 +114,13 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 
 	p := &bytes.Buffer{}
 
-	z, err := setupCompressor(m.Compressor, p)
+	z, compressorName, err := setupCompressor(m.Compressor, p)
 	if err != nil {
 		return nil, err
 	}
+
+	// only use compressor name for the rpm tag, not the level
+	m.Compressor = compressorName
 
 	rpm := &RPM{
 		RPMMetaData:       m,
@@ -140,20 +143,25 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	return rpm, nil
 }
 
-func setupCompressor(compressorSetting string, w io.Writer) (io.WriteCloser, error) {
+func setupCompressor(compressorSetting string, w io.Writer) (wc io.WriteCloser,
+	compressorType string, err error) {
+
 	parts := strings.Split(compressorSetting, ":")
 	if len(parts) > 2 {
-		return nil, fmt.Errorf("malformed compressor setting: %s", compressorSetting)
+		return nil, "", fmt.Errorf("malformed compressor setting: %s", compressorSetting)
 	}
 
-	compressorType := parts[0]
+	compressorType = parts[0]
 	compressorLevel := ""
 	if len(parts) == 2 {
 		compressorLevel = parts[1]
 	}
 
 	switch compressorType {
-	case "", "gzip":
+	case "":
+		compressorType = "gzip"
+		fallthrough
+	case "gzip":
 		level := 9
 
 		if compressorLevel != "" {
@@ -161,23 +169,23 @@ func setupCompressor(compressorSetting string, w io.Writer) (io.WriteCloser, err
 
 			level, err = strconv.Atoi(compressorLevel)
 			if err != nil {
-				return nil, fmt.Errorf("parse gzip compressor level: %w", err)
+				return nil, "", fmt.Errorf("parse gzip compressor level: %w", err)
 			}
 		}
 
-		return gzip.NewWriterLevel(w, level)
+		wc, err = gzip.NewWriterLevel(w, level)
 	case "lzma":
 		if compressorLevel != "" {
-			return nil, fmt.Errorf("no compressor level supported for lzma: %s", compressorLevel)
+			return nil, "", fmt.Errorf("no compressor level supported for lzma: %s", compressorLevel)
 		}
 
-		return lzma.NewWriter(w)
+		wc, err = lzma.NewWriter(w)
 	case "xz":
 		if compressorLevel != "" {
-			return nil, fmt.Errorf("no compressor level supported for xz: %s", compressorLevel)
+			return nil, "", fmt.Errorf("no compressor level supported for xz: %s", compressorLevel)
 		}
 
-		return xz.NewWriter(w)
+		wc, err = xz.NewWriter(w)
 	case "zstd":
 		level := zstd.SpeedBetterCompression
 
@@ -186,15 +194,16 @@ func setupCompressor(compressorSetting string, w io.Writer) (io.WriteCloser, err
 
 			ok, level = zstd.EncoderLevelFromString(compressorLevel)
 			if !ok {
-				return nil, fmt.Errorf("invalid zstd compressor level: %s", compressorLevel)
+				return nil, "", fmt.Errorf("invalid zstd compressor level: %s", compressorLevel)
 			}
 		}
 
-		return zstd.NewWriter(w, zstd.WithEncoderLevel(level))
+		wc, err = zstd.NewWriter(w, zstd.WithEncoderLevel(level))
 	default:
-		return nil, fmt.Errorf("unknown compressor type: %s", compressorType)
-
+		return nil, "", fmt.Errorf("unknown compressor type: %s", compressorType)
 	}
+
+	return wc, compressorType, err
 }
 
 // FullVersion properly combines version and release fields to a version string
