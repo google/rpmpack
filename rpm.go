@@ -28,6 +28,7 @@ import (
 	"time"
 
 	cpio "github.com/cavaliercoder/go-cpio"
+	"github.com/larzconwell/bzip2"
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
@@ -121,6 +122,8 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 		z, err = lzma.NewWriter(p)
 	case "xz":
 		z, err = xz.NewWriter(p)
+	case "bzip2":
+		z = bzip2.NewWriter(p)
 	default:
 		err = fmt.Errorf("unknown compressor type %s", m.Compressor)
 	}
