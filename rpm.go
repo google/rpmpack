@@ -192,9 +192,13 @@ func setupCompressor(compressorSetting string, w io.Writer) (wc io.WriteCloser,
 		if compressorLevel != "" {
 			var ok bool
 
-			ok, level = zstd.EncoderLevelFromString(compressorLevel)
-			if !ok {
-				return nil, "", fmt.Errorf("invalid zstd compressor level: %s", compressorLevel)
+			if intLevel, err := strconv.Atoi(compressorLevel); err == nil {
+				level = zstd.EncoderLevelFromZstd(intLevel)
+			} else {
+				ok, level = zstd.EncoderLevelFromString(compressorLevel)
+				if !ok {
+					return nil, "", fmt.Errorf("invalid zstd compressor level: %s", compressorLevel)
+				}
 			}
 		}
 

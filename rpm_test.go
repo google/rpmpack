@@ -104,13 +104,13 @@ func TestCompression(t *testing.T) {
 			Type: "zstd",
 			Compressors: []string{
 				"zstd", "zstd:fastest", "zstd:default", "zstd:better",
-				"zstd:best", "zstd:BeSt",
+				"zstd:best", "zstd:BeSt", "zstd:0", "zstd:4", "zstd:8", "zstd:15",
 			},
 			ExpectedWriter: &zstd.Encoder{},
 		},
 		{
 			Type:           "zstd",
-			Compressors:    []string{"zstd:1", "xz:worst"},
+			Compressors:    []string{"xz:worst"},
 			ExpectedWriter: nil, // zstd does not support integer compression level
 		},
 	}
