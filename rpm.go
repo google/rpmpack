@@ -25,9 +25,12 @@ import (
 	"io"
 	"path"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	cpio "github.com/cavaliercoder/go-cpio"
+	"github.com/klauspost/compress/zstd"
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
@@ -110,22 +113,10 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	}
 
 	p := &bytes.Buffer{}
-	var z io.WriteCloser
-	switch m.Compressor {
-	case "":
-		m.Compressor = "gzip"
-		fallthrough
-	case "gzip":
-		z, err = gzip.NewWriterLevel(p, 9)
-	case "lzma":
-		z, err = lzma.NewWriter(p)
-	case "xz":
-		z, err = xz.NewWriter(p)
-	default:
-		err = fmt.Errorf("unknown compressor type %s", m.Compressor)
-	}
+
+	z, err := setupCompressor(m.Compressor, p)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create compression writer")
+		return nil, err
 	}
 
 	rpm := &RPM{
@@ -147,6 +138,63 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	})
 
 	return rpm, nil
+}
+
+func setupCompressor(compressorSetting string, w io.Writer) (io.WriteCloser, error) {
+	parts := strings.Split(compressorSetting, ":")
+	if len(parts) > 2 {
+		return nil, fmt.Errorf("malformed compressor setting: %s", compressorSetting)
+	}
+
+	compressorType := parts[0]
+	compressorLevel := ""
+	if len(parts) == 2 {
+		compressorLevel = parts[1]
+	}
+
+	switch compressorType {
+	case "", "gzip":
+		level := 9
+
+		if compressorLevel != "" {
+			var err error
+
+			level, err = strconv.Atoi(compressorLevel)
+			if err != nil {
+				return nil, fmt.Errorf("parse gzip compressor level: %w", err)
+			}
+		}
+
+		return gzip.NewWriterLevel(w, level)
+	case "lzma":
+		if compressorLevel != "" {
+			return nil, fmt.Errorf("no compressor level supported for lzma: %s", compressorLevel)
+		}
+
+		return lzma.NewWriter(w)
+	case "xz":
+		if compressorLevel != "" {
+			return nil, fmt.Errorf("no compressor level supported for xz: %s", compressorLevel)
+		}
+
+		return xz.NewWriter(w)
+	case "zstd":
+		level := zstd.SpeedBetterCompression
+
+		if compressorLevel != "" {
+			var ok bool
+
+			ok, level = zstd.EncoderLevelFromString(compressorLevel)
+			if !ok {
+				return nil, fmt.Errorf("invalid zstd compressor level: %s", compressorLevel)
+			}
+		}
+
+		return zstd.NewWriter(w, zstd.WithEncoderLevel(level))
+	default:
+		return nil, fmt.Errorf("unknown compressor type: %s", compressorType)
+
+	}
 }
 
 // FullVersion properly combines version and release fields to a version string
@@ -218,7 +266,7 @@ func (r *RPM) Write(w io.Writer) error {
 	if _, err := w.Write(sb); err != nil {
 		return errors.Wrap(err, "failed to write signature bytes")
 	}
-	//Signatures are padded to 8-byte boundaries
+	// Signatures are padded to 8-byte boundaries
 	if _, err := w.Write(make([]byte, (8-len(sb)%8)%8)); err != nil {
 		return errors.Wrap(err, "failed to write signature padding")
 	}
@@ -227,7 +275,6 @@ func (r *RPM) Write(w io.Writer) error {
 	}
 	_, err = w.Write(r.payload.Bytes())
 	return errors.Wrap(err, "failed to write payload")
-
 }
 
 // SetPGPSigner registers a function that will accept the header and payload as bytes,
