@@ -2,6 +2,7 @@ package rpmpack
 
 import (
 	"compress/gzip"
+	"github.com/google/go-cmp/cmp"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -151,5 +152,31 @@ func TestCompression(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestAllowListDirs(t *testing.T) {
+	r, err := NewRPM(RPMMetaData{})
+	if err != nil {
+		t.Fatalf("NewRPM returned error %v", err)
+	}
+
+	r.AddFile(RPMFile{
+		Name: "/usr/local/dir1",
+		Mode: 040000,
+	})
+	r.AddFile(RPMFile{
+		Name: "/usr/local/dir2",
+		Mode: 040000,
+	})
+
+	r.AllowListDirs(map[string]bool{"/usr/local/dir1": true})
+
+	if err := r.Write(ioutil.Discard); err != nil {
+		t.Errorf("NewRPM returned error %v", err)
+	}
+	expected := map[string]RPMFile{"/usr/local/dir1": {Name: "/usr/local/dir1", Mode: 040000}}
+	if d := cmp.Diff(expected, r.files); d != "" {
+		t.Errorf("Expected dirs differs (want->got):\n%v", d)
 	}
 }

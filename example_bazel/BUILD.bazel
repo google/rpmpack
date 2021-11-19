@@ -15,6 +15,24 @@ pkg_tar(
     package_dir = "var/lib/rpmpack",
 )
 
+pkg_tar(
+    name = "rpmtest-tar-otherdir",
+    srcs = [":content1.txt"],
+    mode = "0644",
+    ownername = "root.root",
+    package_dir = "/doesnot/exist/rpmpack",
+)
+
+pkg_tar(
+    name = "rpmtest-tar-bothdirs",
+    mode = "0644",
+    ownername = "root.root",
+    deps = [
+        ":rpmtest-tar",
+        ":rpmtest-tar-otherdir",
+    ],
+)
+
 pkg_tar2rpm(
     name = "rpmtest",
     data = ":rpmtest-tar",
@@ -33,6 +51,32 @@ pkg_tar2rpm(
     version = "1.2",
 )
 
+pkg_tar2rpm(
+    name = "rpmtest_bothdirs",
+    data = ":rpmtest-tar-bothdirs",
+    epoch = 42,
+    pkg_name = "rpmtest_bothdirs",
+    release = "3.4",
+    version = "1.2",
+)
+
+pkg_tar2rpm(
+    name = "rpmtest_withoutbothdirs",
+    data = ":rpmtest-tar-bothdirs",
+    pkg_name = "rpmtest_withoutbothdirs",
+    use_dir_allowlist = True,
+    version = "1.2",
+)
+
+pkg_tar2rpm(
+    name = "rpmtest_withonlyonedir",
+    data = ":rpmtest-tar-bothdirs",
+    dir_allowlist = ":dir_allowlist.txt",
+    pkg_name = "rpmtest_withonlyonedir",
+    use_dir_allowlist = True,
+    version = "1.2",
+)
+
 container_image(
     name = "centos_with_rpm",
     testonly = True,
@@ -40,6 +84,9 @@ container_image(
     directory = "/root/",
     files = [
         ":rpmtest.rpm",
+        ":rpmtest_bothdirs",
+        ":rpmtest_withonlyonedir",
+        ":rpmtest_withoutbothdirs",
         ":rpmtest_withtime",
     ],
     legacy_run_behavior = False,
@@ -114,6 +161,15 @@ sample3_link.txt
 """,
 )
 
+docker_diff(
+    name = "centos_rpmsample_directory_doesnotexist",
+    base = ":centos_with_rpmsample_executable",
+    cmd = "echo ===marker=== && /root/rpmsample > /root/rpmsample.rpm && rpm -i /root/rpmsample.rpm && cat /var/lib/thisdoesnotexist/sample.txt",
+    golden = """
+testsample
+""",
+)
+
 container_image(
     name = "fedora_with_rpm",
     testonly = True,
@@ -183,4 +239,40 @@ docker_diff(
     base = ":centos_with_rpm",
     cmd = "echo ===marker=== && rpm -i /root/rpmtest_withtime.rpm && rpm -q rpmtest_withtime --queryformat '%{BUILDTIME}\n'",
     golden = "17",
+)
+
+docker_diff(
+    name = "centos_bothdirs",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i --force /root/rpmtest_bothdirs.rpm && rpm -Vv rpmtest_bothdirs",
+    golden = """
+.........    /does
+.........    /does/not
+.........    /does/not/exist
+.........    /does/not/exist/rpmpack
+.........    /does/not/exist/rpmpack/content1.txt
+.........    /var
+.........    /var/lib
+.........    /var/lib/rpmpack
+.........    /var/lib/rpmpack/content1.txt""",
+)
+
+docker_diff(
+    name = "centos_withoutbothdirs",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest_withoutbothdirs.rpm && rpm -Vv rpmtest_withoutbothdirs",
+    golden = """
+.........    /does/not/exist/rpmpack/content1.txt
+.........    /var/lib/rpmpack/content1.txt""",
+)
+
+docker_diff(
+    name = "centos_withonlyonedir",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker===  && rpm -i /root/rpmtest_withonlyonedir.rpm && rpm -Vv rpmtest_withonlyonedir",
+    golden = """
+.........    /does/not/exist
+.........    /does/not/exist/rpmpack
+.........    /does/not/exist/rpmpack/content1.txt
+.........    /var/lib/rpmpack/content1.txt""",
 )

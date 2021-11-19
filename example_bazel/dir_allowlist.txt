@@ -1,0 +1,2 @@
+/doesnot/exist/rpmpack
+/doesnot/exist

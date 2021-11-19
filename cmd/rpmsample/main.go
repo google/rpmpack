@@ -78,6 +78,14 @@ func main() {
 			Group: "root",
 			Type:  rpmpack.GhostFile,
 		})
+	r.AddFile(
+		rpmpack.RPMFile{
+			Name:  "/var/lib/thisdoesnotexist/sample.txt",
+			Mode:  0644,
+			Body:  []byte("testsample\n"),
+			Owner: "root",
+			Group: "root",
+		})
 	if *sign {
 		r.SetPGPSigner(func([]byte) ([]byte, error) {
 			return []byte(`this is not a signature`), nil
