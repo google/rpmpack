@@ -111,7 +111,7 @@ func TestCompression(t *testing.T) {
 		{
 			Type:           "zstd",
 			Compressors:    []string{"xz:worst"},
-			ExpectedWriter: nil, // zstd does not support integer compression level
+			ExpectedWriter: nil, // only integers levels or one of the pre-defined string values
 		},
 	}
 
