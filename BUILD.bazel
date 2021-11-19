@@ -27,6 +27,7 @@ go_library(
         "@com_github_pkg_errors//:go_default_library",
         "@com_github_ulikunitz_xz//:go_default_library",
         "@com_github_ulikunitz_xz//lzma:go_default_library",
+        "@com_github_klauspost_compress//zstd:go_default_library",
     ],
 )
 
