@@ -246,11 +246,10 @@ docker_diff(
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i --force /root/rpmtest_bothdirs.rpm && rpm -Vv rpmtest_bothdirs",
     golden = """
-.........    /does
-.........    /does/not
-.........    /does/not/exist
-.........    /does/not/exist/rpmpack
-.........    /does/not/exist/rpmpack/content1.txt
+.........    /doesnot
+.........    /doesnot/exist
+.........    /doesnot/exist/rpmpack
+.........    /doesnot/exist/rpmpack/content1.txt
 .........    /var
 .........    /var/lib
 .........    /var/lib/rpmpack
@@ -262,7 +261,7 @@ docker_diff(
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest_withoutbothdirs.rpm && rpm -Vv rpmtest_withoutbothdirs",
     golden = """
-.........    /does/not/exist/rpmpack/content1.txt
+.........    /doesnot/exist/rpmpack/content1.txt
 .........    /var/lib/rpmpack/content1.txt""",
 )
 
@@ -271,8 +270,8 @@ docker_diff(
     base = ":centos_with_rpm",
     cmd = "echo ===marker===  && rpm -i /root/rpmtest_withonlyonedir.rpm && rpm -Vv rpmtest_withonlyonedir",
     golden = """
-.........    /does/not/exist
-.........    /does/not/exist/rpmpack
-.........    /does/not/exist/rpmpack/content1.txt
+.........    /doesnot/exist
+.........    /doesnot/exist/rpmpack
+.........    /doesnot/exist/rpmpack/content1.txt
 .........    /var/lib/rpmpack/content1.txt""",
 )
