@@ -31,5 +31,5 @@ gazelle_dependencies()
 
 load("//:deps.bzl", "rpmpack_dependencies")
 
+# gazelle:repository_macro deps.bzl%rpmpack_dependencies
 rpmpack_dependencies()
-
