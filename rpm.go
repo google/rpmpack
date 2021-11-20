@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	cpio "github.com/cavaliercoder/go-cpio"
+	"github.com/cavaliergopher/cpio"
 	"github.com/klauspost/compress/zstd"
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"

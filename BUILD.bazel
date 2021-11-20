@@ -23,11 +23,11 @@ go_library(
     importpath = "github.com/google/rpmpack",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_cavaliercoder_go_cpio//:go_default_library",
-        "@com_github_pkg_errors//:go_default_library",
-        "@com_github_ulikunitz_xz//:go_default_library",
-        "@com_github_ulikunitz_xz//lzma:go_default_library",
-        "@com_github_klauspost_compress//zstd:go_default_library",
+        "@com_github_cavaliergopher_cpio//:cpio",
+        "@com_github_klauspost_compress//zstd",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_ulikunitz_xz//:xz",
+        "@com_github_ulikunitz_xz//lzma",
     ],
 )
 
@@ -42,7 +42,12 @@ go_test(
         "tar_test.go",
     ],
     embed = [":rpmpack"],
-    deps = ["@com_github_google_go_cmp//cmp:go_default_library"],
+    deps = [
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_klauspost_compress//zstd",
+        "@com_github_ulikunitz_xz//:xz",
+        "@com_github_ulikunitz_xz//lzma",
+    ],
 )
 
 alias(
