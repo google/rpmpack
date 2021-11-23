@@ -71,7 +71,7 @@ pkg_tar2rpm(
 pkg_tar2rpm(
     name = "rpmtest_withonlyonedir",
     data = ":rpmtest-tar-bothdirs",
-    dir_allowlist = ":dir_allowlist.txt",
+    dir_allowlist_file = ":dir_allowlist.txt",
     pkg_name = "rpmtest_withonlyonedir",
     use_dir_allowlist = True,
     version = "1.2",

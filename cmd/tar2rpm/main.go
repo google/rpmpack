@@ -55,8 +55,8 @@ var (
 	preun  = flag.String("preun", "", "preun scriptlet contents (not filename)")
 	postun = flag.String("postun", "", "postun scriptlet contents (not filename)")
 
-	useDirAllowlist = flag.Bool("use_dir_allowlist", false, "Only include dirs in the explicit allow list")
-	dirAllowlist    = flag.String("dir_allowlist", "", "A file with one directory per line to include from the tar to the rpm")
+	useDirAllowlist  = flag.Bool("use_dir_allowlist", false, "Only include dirs in the explicit allow list")
+	dirAllowlistFile = flag.String("dir_allowlist_file", "", "A file with one directory per line to include from the tar to the rpm")
 
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
 )
@@ -152,10 +152,10 @@ func main() {
 	}
 	if *useDirAllowlist {
 		al := map[string]bool{}
-		if *dirAllowlist != "" {
-			f, err := os.Open(*dirAllowlist)
+		if *dirAllowlistFile != "" {
+			f, err := os.Open(*dirAllowlistFile)
 			if err != nil {
-				log.Fatalf("Failed to open dir allowlist %q for reading\n: %s", *dirAllowlist, err)
+				log.Fatalf("Failed to open dir allowlist %q for reading\n: %s", *dirAllowlistFile, err)
 			}
 			defer f.Close()
 			scan := bufio.NewScanner(f)
