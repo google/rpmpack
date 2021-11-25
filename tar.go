@@ -57,13 +57,23 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 		}
 		mtime := uint32(h.ModTime.Unix())
 
+    // Sometimes the tar has no uname and gname. RPM expects these to always exist.
+    owner := h.Uname
+    if owner == "" {
+      owner = "root"
+    }
+    group := h.Gname
+    if group == "" {
+     group = "root"
+    }
+
 		r.AddFile(
 			RPMFile{
 				Name:  path.Join("/", h.Name),
 				Body:  body,
 				Mode:  uint(h.Mode),
-				Owner: h.Uname,
-				Group: h.Gname,
+				Owner: owner,
+				Group: group,
 				MTime: mtime,
 			})
 	}

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -53,6 +54,9 @@ var (
 	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
 	preun  = flag.String("preun", "", "preun scriptlet contents (not filename)")
 	postun = flag.String("postun", "", "postun scriptlet contents (not filename)")
+
+	useDirAllowlist  = flag.Bool("use_dir_allowlist", false, "Only include dirs in the explicit allow list")
+	dirAllowlistFile = flag.String("dir_allowlist_file", "", "A file with one directory per line to include from the tar to the rpm")
 
 	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
 )
@@ -142,15 +146,32 @@ func main() {
 			Requires:    requires,
 			Conflicts:   conflicts,
 		})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)
+		os.Exit(1)
+	}
+	if *useDirAllowlist {
+		al := map[string]bool{}
+		if *dirAllowlistFile != "" {
+			f, err := os.Open(*dirAllowlistFile)
+			if err != nil {
+				log.Fatalf("Failed to open dir allowlist %q for reading\n: %s", *dirAllowlistFile, err)
+			}
+			defer f.Close()
+			scan := bufio.NewScanner(f)
+			for scan.Scan() {
+				t := scan.Text()
+				al[t] = true
+			}
+		}
+		r.AllowListDirs(al)
+	}
+
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
 	r.AddPreun(*preun)
 	r.AddPostun(*postun)
 
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)
-		os.Exit(1)
-	}
 	if err := r.Write(w); err != nil {
 		fmt.Fprintf(os.Stderr, "rpm write error: %v\n", err)
 		os.Exit(1)

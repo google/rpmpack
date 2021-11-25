@@ -14,6 +14,11 @@ def _pkg_tar2rpm_impl(ctx):
     args.add_all("--requires", ctx.attr.requires)
     if ctx.attr.build_time != "":
         args.add("--build_time", ctx.attr.build_time)
+    if ctx.attr.use_dir_allowlist:
+        args.add("--use_dir_allowlist")
+    if ctx.file.dir_allowlist_file:
+        args.add("--dir_allowlist_file", ctx.file.dir_allowlist_file)
+        files.append(ctx.file.dir_allowlist_file)
     args.add("--file", ctx.outputs.out)
     args.add(ctx.file.data)
     ctx.actions.run(
@@ -41,6 +46,9 @@ pkg_tar2rpm = rule(
         "postun": attr.string(),
         "requires": attr.string_list(),
         "build_time": attr.string(),
+        "use_dir_allowlist": attr.bool(default = False, doc = """Only include
+directories themselves if they are in the allowlist file. Using this without an allowlist means do not include directories at all, only files."""),
+        "dir_allowlist_file": attr.label(allow_single_file = True, doc = "A file with a list of directories to include in the rpm. The files contained in the directories are always added."),
         "tar2rpm": attr.label(
             default = Label("//cmd/tar2rpm"),
             cfg = "host",

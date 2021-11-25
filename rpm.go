@@ -219,6 +219,17 @@ func (r *RPM) FullVersion() string {
 	return r.Version
 }
 
+// AllowListDirs removes all directories which are not explicitly allowlisted.
+func (r *RPM) AllowListDirs(allowList map[string]bool) {
+	for fn, ff := range r.files {
+		if ff.Mode&040000 == 040000 {
+			if !allowList[fn] {
+				delete(r.files, fn)
+			}
+		}
+	}
+}
+
 // Write closes the rpm and writes the whole rpm to an io.Writer
 func (r *RPM) Write(w io.Writer) error {
 	if r.closed {
