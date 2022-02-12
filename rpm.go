@@ -19,7 +19,6 @@ package rpmpack
 
 import (
 	"bytes"
-	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/cavaliergopher/cpio"
 	"github.com/klauspost/compress/zstd"
+	gzip "github.com/klauspost/pgzip"
 	"github.com/pkg/errors"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
