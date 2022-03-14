@@ -1,14 +1,15 @@
 package rpmpack
 
 import (
-	"compress/gzip"
-	"github.com/google/go-cmp/cmp"
 	"io"
 	"io/ioutil"
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/klauspost/compress/zstd"
+	gzip "github.com/klauspost/pgzip"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
 )

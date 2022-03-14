@@ -25,6 +25,7 @@ go_library(
     deps = [
         "@com_github_cavaliergopher_cpio//:cpio",
         "@com_github_klauspost_compress//zstd",
+        "@com_github_klauspost_pgzip//:pgzip",
         "@com_github_pkg_errors//:errors",
         "@com_github_ulikunitz_xz//:xz",
         "@com_github_ulikunitz_xz//lzma",
