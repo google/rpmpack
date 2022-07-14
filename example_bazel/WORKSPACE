@@ -51,6 +51,21 @@ rpmpack_dependencies()
 # From here on, this is a testsuite using docker containers to test rpmpack's results
 # on an actual centos environment. This is not required for most users of rpmpack.
 
+# rules_pkg MUST appear before rules_docker. This is an ugly necessity until rules_docker
+# updates their deps. Apparently bazel just uses the first http_archive you define.
+http_archive(
+    name = "rules_pkg",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+    ],
+    sha256 = "8a298e832762eda1830597d64fe7db58178aa84cd5926d76d5b744d6558941c2",
+)
+
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+
+rules_pkg_dependencies()
+
 http_archive(
     name = "io_bazel_rules_docker",
     sha256 = "b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf",
@@ -85,15 +100,4 @@ container_pull(
     registry = "index.docker.io",
     repository = "library/fedora",
 )
-
-http_archive(
-    name = "rules_pkg_070",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
-        "https://github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
-    ],
-    sha256 = "8a298e832762eda1830597d64fe7db58178aa84cd5926d76d5b744d6558941c2",
-)
-load("@rules_pkg_070//:deps.bzl", "rules_pkg_dependencies")
-rules_pkg_dependencies()
 
