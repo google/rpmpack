@@ -3,7 +3,7 @@
 # this is currently added to assist in external testing.
 
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@com_github_google_rpmpack//:def.bzl", "pkg_tar2rpm")
 load("//:testing.bzl", "docker_diff")
 
