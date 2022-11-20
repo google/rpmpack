@@ -8,6 +8,7 @@ import (
 
 type rpmSense uint32
 
+// https://github.com/rpm-software-management/rpm/blob/ab01b5eacf9ec6a07a5d9e1991ef476a12d264fd/include/rpm/rpmds.h#L27
 // SenseAny (0) specifies no specific version compare
 // SenseLess (2) specifies less then the specified version
 // SenseGreater (4) specifies greater then the specified version
@@ -17,6 +18,7 @@ const (
 	SenseLess          = 1 << iota
 	SenseGreater
 	SenseEqual
+	SenseRPMLIB rpmSense = 1 << 24
 )
 
 var relationMatch = regexp.MustCompile(`([^=<>\s]*)\s*((?:=|>|<)*)\s*(.*)?`)
@@ -103,15 +105,27 @@ func NewRelation(related string) (*Relation, error) {
 	var (
 		err   error
 		sense rpmSense
+		name,
+		version string
 	)
-	parts := relationMatch.FindStringSubmatch(related)
-	if sense, err = parseSense(parts[2]); err != nil {
-		return nil, err
+
+	if strings.HasPrefix(related, "(") && strings.HasSuffix(related, ")") {
+		// This is a `rich` dependency which must be parsed at install time
+		// https://rpm-software-management.github.io/rpm/manual/boolean_dependencies.html
+		sense = SenseAny
+		name = related
+	} else {
+		parts := relationMatch.FindStringSubmatch(related)
+		if sense, err = parseSense(parts[2]); err != nil {
+			return nil, err
+		}
+		name = parts[1]
+		version = parts[3]
 	}
 
 	return &Relation{
-		Name:    parts[1],
-		Version: parts[3],
+		Name:    name,
+		Version: version,
 		Sense:   sense,
 	}, nil
 }
