@@ -51,7 +51,7 @@ directories themselves if they are in the allowlist file. Using this without an 
         "dir_allowlist_file": attr.label(allow_single_file = True, doc = "A file with a list of directories to include in the rpm. The files contained in the directories are always added."),
         "tar2rpm": attr.label(
             default = Label("//cmd/tar2rpm"),
-            cfg = "host",
+            cfg = "exec",
             executable = True,
         ),
     },

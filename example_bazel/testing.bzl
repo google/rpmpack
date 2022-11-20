@@ -16,7 +16,7 @@ diff_test_expand = rule(
             mandatory = True,
             allow_single_file = True,
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
         "golden": attr.string(
             mandatory = True,
