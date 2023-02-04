@@ -18,11 +18,12 @@
 package main
 
 import (
+
+	"github.com/google/rpmpack"
 	"flag"
 	"log"
 	"os"
 
-	"github.com/google/rpmpack"
 )
 
 func main() {
