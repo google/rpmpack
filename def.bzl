@@ -12,6 +12,7 @@ def _pkg_tar2rpm_impl(ctx):
     args.add("--preun", ctx.attr.preun)
     args.add("--postun", ctx.attr.postun)
     args.add_all("--requires", ctx.attr.requires)
+    args.add_joined("--prefixes", ctx.attr.prefixes, join_with = ",")
     if ctx.attr.build_time != "":
         args.add("--build_time", ctx.attr.build_time)
     if ctx.attr.use_dir_allowlist:
@@ -45,6 +46,7 @@ pkg_tar2rpm = rule(
         "preun": attr.string(),
         "postun": attr.string(),
         "requires": attr.string_list(),
+        "prefixes": attr.string_list(),
         "build_time": attr.string(),
         "use_dir_allowlist": attr.bool(default = False, doc = """Only include
 directories themselves if they are in the allowlist file. Using this without an allowlist means do not include directories at all, only files."""),

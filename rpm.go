@@ -61,6 +61,9 @@ type RPMMetaData struct {
 	Compressor string
 	Epoch     uint32
 	BuildTime time.Time
+	// Prefixes is used for relocatable packages, usually with a one item
+	// slice, e.g. `["/opt"]`.
+	Prefixes  []string
 	Provides,
 	Obsoletes,
 	Suggests,
@@ -379,6 +382,9 @@ func (r *RPM) writeGenIndexes(h *index) {
 		// time.Time zero value is confusing, avoid if not supplied
 		// see https://github.com/google/rpmpack/issues/43
 		h.Add(tagBuildTime, EntryInt32([]int32{int32(r.BuildTime.Unix())}))
+	}
+	if len(r.Prefixes) != 0 {
+		h.Add(tagPrefixes, EntryStringSlice(r.Prefixes))
 	}
 	h.Add(tagRelease, EntryString(r.Release))
 	h.Add(tagPayloadFormat, EntryString("cpio"))
