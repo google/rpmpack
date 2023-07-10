@@ -20,8 +20,6 @@ import (
 	"io"
 	"io/ioutil"
 	"path"
-
-	"github.com/pkg/errors"
 )
 
 // FromTar reads a tar file and creates an rpm stuct.
@@ -29,7 +27,7 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 
 	r, err := NewRPM(md)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create RPM structure")
+		return nil, fmt.Errorf("failed to create RPM structure: %w", err)
 	}
 	t := tar.NewReader(inp)
 	for {
@@ -37,7 +35,7 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 		if err == io.EOF {
 			return r, nil
 		} else if err != nil {
-			return nil, errors.Wrap(err, "failed to read tar file")
+			return nil, fmt.Errorf("failed to read tar file: %w", err)
 		}
 		var body []byte
 		switch h.Typeflag {
@@ -49,7 +47,7 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 		case tar.TypeReg:
 			b, err := ioutil.ReadAll(t)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to read file (%q)", h.Name)
+				return nil, fmt.Errorf("failed to read file (%q): %w", h.Name, err)
 			}
 			body = b
 		default:
