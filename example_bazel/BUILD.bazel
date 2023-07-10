@@ -44,6 +44,18 @@ pkg_tar2rpm(
 )
 
 pkg_tar2rpm(
+    name = "rpmtest_with_prefixes",
+    data = ":rpmtest-tar",
+    dir_allowlist_file = ":allowlist_var_lib_rpmpack.txt",
+    epoch = 42,
+    pkg_name = "rpmtest_with_prefixes",
+    prefixes = ["/var/lib"],
+    release = "3.4",
+    use_dir_allowlist = True,
+    version = "1.2",
+)
+
+pkg_tar2rpm(
     name = "rpmtest_withtime",
     build_time = "17",
     data = ":rpmtest-tar",
@@ -85,6 +97,7 @@ container_image(
     files = [
         ":rpmtest.rpm",
         ":rpmtest_bothdirs",
+        ":rpmtest_with_prefixes",
         ":rpmtest_withonlyonedir",
         ":rpmtest_withoutbothdirs",
         ":rpmtest_withtime",
@@ -225,6 +238,22 @@ docker_diff(
     base = ":centos_with_metarpm",
     cmd = "echo ===marker=== && rpm -i /root/rpmmetatest.rpm && rpm -qpR /root/rpmmetatest.rpm",
     golden = "bash",
+)
+
+docker_diff(
+    name = "centos_with_prefixes_meta",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker=== && rpm -i /root/rpmtest_with_prefixes.rpm && rpm -q rpmtest_with_prefixes --queryformat '%{PREFIXES}\n'",
+    golden = "/var/lib",
+)
+
+docker_diff(
+    name = "centos_with_prefixes_ls",
+    base = ":centos_with_rpm",
+    cmd = "echo ===marker=== && rpm -i --prefix=/opt /root/rpmtest_with_prefixes.rpm && rpm -Vv rpmtest_with_prefixes",
+    golden = """
+.........    /opt/rpmpack
+.........    /opt/rpmpack/content1.txt""",
 )
 
 docker_diff(

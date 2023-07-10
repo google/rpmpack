@@ -22,6 +22,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/rpmpack"
@@ -39,6 +40,7 @@ var (
 	release     = flag.String("release", "", "the rpm release")
 	epoch       = flag.Uint64("epoch", 0, "the rpm epoch")
 	arch        = flag.String("arch", "noarch", "the rpm architecture")
+	prefixes    = flag.String("prefixes", "", "comma separated prefixes for relocatable packages")
 	buildTime   = flag.Int64("build_time", 0, "the build_time unix timestamp")
 	compressor  = flag.String("compressor", "gzip", "the rpm compressor")
 	osName      = flag.String("os", "linux", "the rpm os")
@@ -129,6 +131,7 @@ func main() {
 			Release:     *release,
 			Epoch:       uint32(*epoch),
 			BuildTime:   buildTimeStamp,
+			Prefixes:    strings.Split(*prefixes, ","),
 			Arch:        *arch,
 			OS:          *osName,
 			Vendor:      *vendor,
