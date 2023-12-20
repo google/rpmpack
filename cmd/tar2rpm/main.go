@@ -129,15 +129,15 @@ func main() {
 			Name:        *name,
 			Version:     *version,
 			Release:     *release,
-			Epoch:       uint32(*epoch),
+			Epoch:       uint32Ptr(epoch),
 			BuildTime:   buildTimeStamp,
 			Prefixes:    strings.Split(*prefixes, ","),
 			Arch:        *arch,
 			OS:          *osName,
-			Vendor:      *vendor,
-			Packager:    *packager,
-			Group:       *group,
-			URL:         *url,
+			Vendor:      vendor,
+			Packager:    packager,
+			Group:       group,
+			URL:         url,
 			Licence:     *licence,
 			Description: *description,
 			Summary:     *summary,
@@ -179,5 +179,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "rpm write error: %v\n", err)
 		os.Exit(1)
 	}
+}
 
+func uint32Ptr(i *uint64) *uint32 {
+	if i == nil {
+		return nil
+	}
+	v := uint32(*i)
+	return &v
 }
