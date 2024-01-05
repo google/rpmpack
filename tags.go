@@ -68,11 +68,13 @@ const (
 	tagConflictFlags     = 0x041d // 1053
 	tagConflicts         = 0x041e // 1054
 	tagConflictVersion   = 0x041f // 1055
+	tagVerifyScript      = 0x0437 // 1079
 	tagPreinProg         = 0x043d // 1085
 	tagPostinProg        = 0x043e // 1086
 	tagPreunProg         = 0x043f // 1087
 	tagPostunProg        = 0x0440 // 1088
 	tagObsoletes         = 0x0442 // 1090
+	tagVerifyScriptProg  = 0x0443 // 1091
 	tagFileINodes        = 0x0448 // 1096
 	tagFileLangs         = 0x0449 // 1097
 	tagPrefixes          = 0x044a // 1098

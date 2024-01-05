@@ -63,7 +63,7 @@ type RPMMetaData struct {
 	BuildTime time.Time
 	// Prefixes is used for relocatable packages, usually with a one item
 	// slice, e.g. `["/opt"]`.
-	Prefixes  []string
+	Prefixes []string
 	Provides,
 	Obsoletes,
 	Suggests,
@@ -98,6 +98,7 @@ type RPM struct {
 	postun            string
 	pretrans          string
 	posttrans         string
+	verifyscript      string
 	customTags        map[int]IndexEntry
 	customSigs        map[int]IndexEntry
 	pgpSigner         func([]byte) ([]byte, error)
@@ -430,6 +431,10 @@ func (r *RPM) writeGenIndexes(h *index) {
 		h.Add(tagPosttrans, EntryString(r.posttrans))
 		h.Add(tagPosttransProg, EntryString("/bin/sh"))
 	}
+	if r.verifyscript != "" {
+		h.Add(tagVerifyScript, EntryString(r.verifyscript))
+		h.Add(tagVerifyScriptProg, EntryString("/bin/sh"))
+	}
 }
 
 // WriteFileIndexes writes file related index headers to the header
@@ -495,6 +500,11 @@ func (r *RPM) AddPostun(s string) {
 // AddPosttrans adds a posttrans scriptlet
 func (r *RPM) AddPosttrans(s string) {
 	r.posttrans = s
+}
+
+// AddVerifyScript adds a verifyscript scriptlet
+func (r *RPM) AddVerifyScript(s string) {
+	r.verifyscript = s
 }
 
 // AddFile adds an RPMFile to an existing rpm.
