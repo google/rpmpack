@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library")
 
 go_library(
     name = "rpmsample_lib",
@@ -9,7 +9,16 @@ go_library(
 )
 
 go_binary(
-    name = "rpmsample",
+    name = "rpmsample_bin",
     embed = [":rpmsample_lib"],
+    visibility = ["//visibility:public"],
+)
+
+# This was the easiest way to get rid of libc mismatch errors.
+# We run the tests on docker with older version of libc.
+go_cross_binary(
+    name = "rpmsample",
+    platform = "@rules_go//go/toolchain:linux_amd64",
+    target = ":rpmsample_bin",
     visibility = ["//visibility:public"],
 )

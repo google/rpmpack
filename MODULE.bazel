@@ -1,6 +1,6 @@
 module(
-  name = "rpmpack",
-  version = "0.6.0",
+    name = "rpmpack",
+    version = "0.6.0",
 )
 
 bazel_dep(name = "rules_go", version = "0.46.0")

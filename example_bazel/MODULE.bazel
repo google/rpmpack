@@ -1,12 +1,12 @@
-
-module(name = "rpmpack_example_bazel", version = "0.6.0")
+module(
+    name = "rpmpack_example_bazel",
+    version = "0.6.0",
+)
 
 bazel_dep(name = "rpmpack", version = "0.6.0")
-
 local_path_override(
-  module_name = "rpmpack",
-  path = "../",
+    module_name = "rpmpack",
+    path = "../",
 )
 
 bazel_dep(name = "rules_pkg", version = "0.10.0")
-
