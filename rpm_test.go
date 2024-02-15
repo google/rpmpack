@@ -1,6 +1,7 @@
 package rpmpack
 
 import (
+	"bytes"
 	"io"
 	"reflect"
 	"testing"
@@ -178,5 +179,24 @@ func TestAllowListDirs(t *testing.T) {
 	expected := map[string]RPMFile{"/usr/local/dir1": {Name: "/usr/local/dir1", Mode: 040000}}
 	if d := cmp.Diff(expected, r.files); d != "" {
 		t.Errorf("Expected dirs differs (want->got):\n%v", d)
+	}
+}
+
+func TestMinimalSpec(t *testing.T) {
+	r, err := NewRPM(RPMMetaData{
+		Name:        "test",
+		Version:     "1.0",
+		Release:     "1",
+		Summary:     "test summary",
+		Description: "test description",
+		Licence:     "test license",
+	})
+	if err != nil {
+		t.Fatalf("NewRPM returned error %v", err)
+	}
+
+	var b bytes.Buffer
+	if err := r.Write(&b); err != nil {
+		t.Errorf("Write returned error %v", err)
 	}
 }
