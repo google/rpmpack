@@ -1,12 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
 # A build file for rpmpack.
 # For running basic build/run/test you can also use the regular go tools,
 # this is currently added to assist in external testing.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@gazelle//:def.bzl", "gazelle")
 
-# gazelle:prefix github.com/google/rpmpack
-# gazelle:go_naming_convention import_alias
 gazelle(name = "gazelle")
 
 go_library(
@@ -49,10 +48,4 @@ go_test(
         "@com_github_ulikunitz_xz//:xz",
         "@com_github_ulikunitz_xz//lzma",
     ],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":rpmpack",
-    visibility = ["//visibility:public"],
 )
