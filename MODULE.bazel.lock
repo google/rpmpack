@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 3,
-  "moduleFileHash": "3fdd6ffe1682c5145f2252ae5598f8babe260fe2906991faca03b0d47c0a9c93",
+  "moduleFileHash": "0955142ea73b5f1a362ce2d871bf63576d0bdc8bbdd9b04c11f54f028228d5da",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -17,10 +17,10 @@
   },
   "moduleDepGraph": {
     "<root>": {
-      "name": "",
-      "version": "",
+      "name": "rpmpack",
+      "version": "0.6.0",
       "key": "<root>",
-      "repoName": "",
+      "repoName": "rpmpack",
       "executionPlatformsToRegister": [],
       "toolchainsToRegister": [],
       "extensionUsages": [
@@ -30,7 +30,7 @@
           "usingModule": "<root>",
           "location": {
             "file": "@@//:MODULE.bazel",
-            "line": 4,
+            "line": 9,
             "column": 24
           },
           "imports": {
@@ -50,7 +50,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 5,
+                "line": 10,
                 "column": 18
               }
             }
