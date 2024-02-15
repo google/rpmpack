@@ -2,7 +2,6 @@ package rpmpack
 
 import (
 	"io"
-	"io/ioutil"
 	"reflect"
 	"testing"
 
@@ -29,7 +28,7 @@ func TestFileOwner(t *testing.T) {
 		Owner: user,
 	})
 
-	if err := r.Write(ioutil.Discard); err != nil {
+	if err := r.Write(io.Discard); err != nil {
 		t.Errorf("NewRPM returned error %v", err)
 	}
 	if r.fileowners[0] != user {
@@ -52,7 +51,7 @@ func Test100644(t *testing.T) {
 		Mode: 0100644,
 	})
 
-	if err := r.Write(ioutil.Discard); err != nil {
+	if err := r.Write(io.Discard); err != nil {
 		t.Errorf("Write returned error %v", err)
 	}
 	if r.filemodes[0] != 0100644 {
@@ -173,7 +172,7 @@ func TestAllowListDirs(t *testing.T) {
 
 	r.AllowListDirs(map[string]bool{"/usr/local/dir1": true})
 
-	if err := r.Write(ioutil.Discard); err != nil {
+	if err := r.Write(io.Discard); err != nil {
 		t.Errorf("NewRPM returned error %v", err)
 	}
 	expected := map[string]RPMFile{"/usr/local/dir1": {Name: "/usr/local/dir1", Mode: 040000}}

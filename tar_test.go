@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -67,7 +66,6 @@ func createTar(t *testing.T) io.Reader {
 }
 
 func TestFromTar(t *testing.T) {
-
 	testCases := []struct {
 		name          string
 		input         io.Reader
@@ -86,7 +84,7 @@ func TestFromTar(t *testing.T) {
 			if err != nil {
 				t.Errorf("FromTar returned err: %v", err)
 			}
-			if err := r.Write(ioutil.Discard); err != nil {
+			if err := r.Write(io.Discard); err != nil {
 				t.Errorf("r.Write() returned err: %v", err)
 			}
 			if r == nil {
