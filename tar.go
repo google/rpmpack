@@ -18,13 +18,11 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path"
 )
 
 // FromTar reads a tar file and creates an rpm stuct.
 func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
-
 	r, err := NewRPM(md)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create RPM structure: %w", err)
@@ -45,7 +43,7 @@ func FromTar(inp io.Reader, md RPMMetaData) (*RPM, error) {
 			body = []byte(h.Linkname)
 			h.Mode |= 0120000
 		case tar.TypeReg:
-			b, err := ioutil.ReadAll(t)
+			b, err := io.ReadAll(t)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read file (%q): %w", h.Name, err)
 			}

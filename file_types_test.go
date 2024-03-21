@@ -5,9 +5,7 @@ import (
 )
 
 func TestFileTypeSetting(t *testing.T) {
-	f := &RPMFile{
-		Name: "Test",
-	}
+	f := &RPMFile{}
 
 	if f.Type != GenericFile {
 		t.Error("New RPMFile.Type should be a generic type")
@@ -20,9 +18,7 @@ func TestFileTypeSetting(t *testing.T) {
 }
 
 func TestFileTypeCombining(t *testing.T) {
-	f := &RPMFile{
-		Name: "Test",
-	}
+	f := &RPMFile{}
 
 	f.Type |= ConfigFile | NoReplaceFile
 
