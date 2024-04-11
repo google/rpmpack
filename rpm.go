@@ -461,6 +461,8 @@ func (r *RPM) writeFileIndexes(h *index) {
 	for ii := range inodes {
 		// is inodes just a range from 1..len(dirindexes)? maybe different with hard links
 		inodes[ii] = int32(ii + 1)
+		// is devices number from which the file was copied
+		// from rpm original tools https://github.com/rpm-software-management/rpm/blob/c167ef8bdaecdd2e306ec896c919607ba9cceb6f/build/files.c#L1226
 		devices[ii] = int32(1)
 		digestAlgo[ii] = hashAlgoSHA256
 		// With regular files, it seems like we can always enable all of the verify flags
