@@ -471,6 +471,7 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileFlags, EntryUint32(r.fileflags))
 
 	inodes := make([]int32, len(r.dirindexes))
+	devices := make([]int32, len(r.dirindexes))
 	digestAlgo := make([]int32, len(r.dirindexes))
 	verifyFlags := make([]int32, len(r.dirindexes))
 	fileRDevs := make([]int16, len(r.dirindexes))
@@ -479,12 +480,16 @@ func (r *RPM) writeFileIndexes(h *index) {
 	for ii := range inodes {
 		// is inodes just a range from 1..len(dirindexes)? maybe different with hard links
 		inodes[ii] = int32(ii + 1)
+		// is devices number from which the file was copied
+		// from rpm original tools https://github.com/rpm-software-management/rpm/blob/c167ef8bdaecdd2e306ec896c919607ba9cceb6f/build/files.c#L1226
+		devices[ii] = int32(1)
 		digestAlgo[ii] = hashAlgoSHA256
 		// With regular files, it seems like we can always enable all of the verify flags
 		verifyFlags[ii] = int32(-1)
 		fileRDevs[ii] = int16(1)
 	}
 	h.Add(tagFileINodes, EntryInt32(inodes))
+	h.Add(tagFileDevices, EntryInt32(devices))
 	h.Add(tagFileDigestAlgo, EntryInt32(digestAlgo))
 	h.Add(tagFileVerifyFlags, EntryInt32(verifyFlags))
 	h.Add(tagFileRDevs, EntryInt16(fileRDevs))

@@ -74,6 +74,7 @@ const (
 	tagPreunProg         = 0x043f // 1087
 	tagPostunProg        = 0x0440 // 1088
 	tagObsoletes         = 0x0442 // 1090
+	tagFileDevices       = 0x0447 // 1095
 	tagVerifyScriptProg  = 0x0443 // 1091
 	tagFileINodes        = 0x0448 // 1096
 	tagFileLangs         = 0x0449 // 1097
