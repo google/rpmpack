@@ -42,7 +42,8 @@ const (
 	// We decided to use this approach instead of making epoch a *uint32 to
 	// avoid a breaking change.
 	// For reference, this is the max uint32 value, which is 4294967295.
-	NoEpoch = ^uint32(0)
+	NoEpoch                     = ^uint32(0)
+	DefaultScriptletInterpreter = "/bin/sh"
 )
 
 var (
@@ -50,6 +51,15 @@ var (
 	ErrWriteAfterClose = errors.New("rpm write after close")
 	// ErrWrongFileOrder is returned when files are not sorted by name.
 	ErrWrongFileOrder = errors.New("wrong file addition order")
+	scriptletsTypes   = map[string]scriptletType{
+		"pretrans":     {tag: tagPretrans, programTag: tagPretransProg},
+		"prein":        {tag: tagPrein, programTag: tagPreinProg},
+		"postin":       {tag: tagPostin, programTag: tagPostinProg},
+		"preun":        {tag: tagPreun, programTag: tagPreunProg},
+		"postun":       {tag: tagPostun, programTag: tagPostunProg},
+		"posttrans":    {tag: tagPosttrans, programTag: tagPosttransProg},
+		"verifyscript": {tag: tagVerifyScript, programTag: tagVerifyScriptProg},
+	}
 )
 
 // RPMMetaData contains meta info about the whole package.
@@ -101,16 +111,28 @@ type RPM struct {
 	closed            bool
 	compressedPayload io.WriteCloser
 	files             map[string]RPMFile
-	prein             string
-	postin            string
-	preun             string
-	postun            string
-	pretrans          string
-	posttrans         string
-	verifyscript      string
 	customTags        map[int]IndexEntry
 	customSigs        map[int]IndexEntry
 	pgpSigner         func([]byte) ([]byte, error)
+
+	defaultScriptletInterpreter string
+	scriptlets                  map[string]scriptlet
+}
+
+type scriptlet struct {
+	// If `interpreter` is empty, `DefaultScriptletInterpreter` is used.
+	// If `content` is empty and `interpreter` set, it is called without arguments.
+	content     string
+	interpreter string
+}
+
+type scriptletType struct {
+	tag        int
+	programTag int
+}
+
+type explicitScriptlets struct {
+	scriptlets map[string]scriptlet
 }
 
 // NewRPM creates and returns a new RPM struct.
@@ -136,14 +158,16 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	m.Compressor = compressorName
 
 	rpm := &RPM{
-		RPMMetaData:       m,
-		di:                newDirIndex(),
-		payload:           p,
-		compressedPayload: z,
-		cpio:              cpio.NewWriter(z),
-		files:             make(map[string]RPMFile),
-		customTags:        make(map[int]IndexEntry),
-		customSigs:        make(map[int]IndexEntry),
+		RPMMetaData:                 m,
+		di:                          newDirIndex(),
+		payload:                     p,
+		compressedPayload:           z,
+		cpio:                        cpio.NewWriter(z),
+		files:                       make(map[string]RPMFile),
+		customTags:                  make(map[int]IndexEntry),
+		customSigs:                  make(map[int]IndexEntry),
+		defaultScriptletInterpreter: DefaultScriptletInterpreter,
+		scriptlets:                  make(map[string]scriptlet),
 	}
 
 	// A package must provide itself...
@@ -273,6 +297,7 @@ func (r *RPM) Write(w io.Writer) error {
 	// Write the regular header.
 	h := newIndex(immutable)
 	r.writeGenIndexes(h)
+	r.writeScriptlets(h, r.implicitToExplicitScriptlets())
 
 	// do not write file indexes if there are no files (meta package)
 	// doing so will result in an invalid package
@@ -426,34 +451,6 @@ func (r *RPM) writeGenIndexes(h *index) {
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, EntryString(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
-	if r.pretrans != "" {
-		h.Add(tagPretrans, EntryString(r.pretrans))
-		h.Add(tagPretransProg, EntryString("/bin/sh"))
-	}
-	if r.prein != "" {
-		h.Add(tagPrein, EntryString(r.prein))
-		h.Add(tagPreinProg, EntryString("/bin/sh"))
-	}
-	if r.postin != "" {
-		h.Add(tagPostin, EntryString(r.postin))
-		h.Add(tagPostinProg, EntryString("/bin/sh"))
-	}
-	if r.preun != "" {
-		h.Add(tagPreun, EntryString(r.preun))
-		h.Add(tagPreunProg, EntryString("/bin/sh"))
-	}
-	if r.postun != "" {
-		h.Add(tagPostun, EntryString(r.postun))
-		h.Add(tagPostunProg, EntryString("/bin/sh"))
-	}
-	if r.posttrans != "" {
-		h.Add(tagPosttrans, EntryString(r.posttrans))
-		h.Add(tagPosttransProg, EntryString("/bin/sh"))
-	}
-	if r.verifyscript != "" {
-		h.Add(tagVerifyScript, EntryString(r.verifyscript))
-		h.Add(tagVerifyScriptProg, EntryString("/bin/sh"))
-	}
 }
 
 // WriteFileIndexes writes file related index headers to the header
@@ -496,39 +493,112 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileLangs, EntryStringSlice(fileLangs))
 }
 
+func (r *RPM) writeScriptlets(h *index, s explicitScriptlets) {
+	for name, s := range s.scriptlets {
+		tagInfo, found := scriptletsTypes[name]
+		if !found {
+			panic(fmt.Sprintf("internal error: invalid scriptlet name %q", name))
+		}
+		// If only an interpreter is given then the `scriptlet` becomes a `program` which is called without arguments
+		if s.content != "" {
+			h.Add(tagInfo.tag, EntryString(s.content))
+		}
+		h.Add(tagInfo.programTag, EntryString(s.interpreter))
+	}
+}
+
+// Resolve implicit interpreter values to explicit ones
+func (r *RPM) implicitToExplicitScriptlets() explicitScriptlets {
+	explicitScriptlets := explicitScriptlets{make(map[string]scriptlet)}
+	for name, s := range r.scriptlets {
+		if s.content == "" && s.interpreter == "" {
+			continue
+		}
+		explicit := scriptlet{}
+		_, found := scriptletsTypes[name]
+		if !found {
+			panic(fmt.Sprintf("internal error: invalid scriptlet name %q", name))
+		}
+		explicit.content = s.content
+		if s.interpreter == "" {
+			explicit.interpreter = r.defaultScriptletInterpreter
+		} else {
+			explicit.interpreter = s.interpreter
+		}
+		explicitScriptlets.scriptlets[name] = explicit
+	}
+	return explicitScriptlets
+}
+
+// Sets the default scriptlet interpreter (a.k.a. scriptlet program) used to call
+// scriptlets, defaults to `/bin/sh`. Does not reset an interpeter previously set by
+// `SetScriptletInterpreterFor()`.
+// An emtpy string resets to the default.
+// Note: The scriptlets of an rpm can be checked via `rpm -qp --scripts RPMFILE`.
+func (r *RPM) SetDefaultScriptletInterpreter(interpreter string) {
+	if interpreter == "" {
+		r.defaultScriptletInterpreter = DefaultScriptletInterpreter
+	} else {
+		r.defaultScriptletInterpreter = interpreter
+	}
+}
+
+// Set a per-scriptlet interpreter, where `name` must
+// be one of: `prein postin preun postun pretrans posttrans verifyscript`
+func (r *RPM) SetScriptletInterpreterFor(name, interpreter string) error {
+	_, found := scriptletsTypes[name]
+	if !found {
+		return fmt.Errorf("invalid scriptlet name %q", name)
+	}
+	item := r.scriptlets[name]
+	item.interpreter = interpreter
+	r.scriptlets[name] = item
+	return nil
+}
+
+func (r *RPM) setScriptlet(name, content string) {
+	_, found := scriptletsTypes[name]
+	if !found {
+		panic(fmt.Sprintf("internal error: invalid scriptlet name %q", name))
+	}
+	item := r.scriptlets[name]
+	item.content = content
+	r.scriptlets[name] = item
+}
+
 // AddPretrans adds a pretrans scriptlet
 func (r *RPM) AddPretrans(s string) {
-	r.pretrans = s
+	r.setScriptlet("pretrans", s)
 }
 
 // AddPrein adds a prein scriptlet
 func (r *RPM) AddPrein(s string) {
-	r.prein = s
+	r.setScriptlet("prein", s)
 }
 
 // AddPostin adds a postin scriptlet
 func (r *RPM) AddPostin(s string) {
-	r.postin = s
+	r.setScriptlet("postin", s)
 }
 
 // AddPreun adds a preun scriptlet
 func (r *RPM) AddPreun(s string) {
-	r.preun = s
+	r.setScriptlet("preun", s)
 }
 
 // AddPostun adds a postun scriptlet
 func (r *RPM) AddPostun(s string) {
-	r.postun = s
+	r.setScriptlet("postun", s)
 }
 
 // AddPosttrans adds a posttrans scriptlet
 func (r *RPM) AddPosttrans(s string) {
-	r.posttrans = s
+	r.setScriptlet("posttrans", s)
 }
 
 // AddVerifyScript adds a verifyscript scriptlet
 func (r *RPM) AddVerifyScript(s string) {
-	r.verifyscript = s
+	r.setScriptlet("verifyscript", s)
 }
 
 // AddFile adds an RPMFile to an existing rpm.
