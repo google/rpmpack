@@ -28,6 +28,11 @@ import (
 	"github.com/google/rpmpack"
 )
 
+const (
+	// "Magic" filename: instead of reading/writing to that file use stdin/stdout (can still be used via './-').
+	DashStdinStdout = "-"
+)
+
 var (
 	provides,
 	obsoletes,
@@ -60,15 +65,17 @@ var (
 	useDirAllowlist  = flag.Bool("use_dir_allowlist", false, "Only include dirs in the explicit allow list")
 	dirAllowlistFile = flag.String("dir_allowlist_file", "", "A file with one directory per line to include from the tar to the rpm")
 
-	outputfile = flag.String("file", "", "write rpm to `FILE` instead of stdout")
+	outputfile = flag.String("file", "", "write rpm to `RPMFILE` instead of stdout")
 )
 
 func usage() {
 	fmt.Fprintf(os.Stderr,
 		`Usage:
-  %s [OPTION] [FILE]
+  %s -name NAME -version VERSION [OPTION] [TARFILE]
+        Read tar content from stdin, or TARFILE if present. Write rpm to stdout, or the file given
+        by -file RPMFILE. If a filename is '%s' use stdin/stdout without printing a notice.
 Options:
-`, os.Args[0])
+`, os.Args[0], DashStdinStdout)
 	flag.PrintDefaults()
 }
 
@@ -96,17 +103,23 @@ func main() {
 		buildTimeStamp = time.Unix(*buildTime, 0)
 	}
 
+	noticeStdinStdout := ""
 	var i io.Reader
 	switch flag.NArg() {
 	case 0:
-		fmt.Fprintln(os.Stderr, "reading tar content from stdin.")
+		// Only print notice if no explicit '-' is given:
+		noticeStdinStdout = "reading tar content from stdin"
 		i = os.Stdin
 	case 1:
-		f, err := os.Open(flag.Arg(0))
-		if err != nil {
-			log.Fatalf("Failed to open file %s for reading\n", flag.Arg(0))
+		if flag.Arg(0) == DashStdinStdout {
+			i = os.Stdin
+		} else {
+			f, err := os.Open(flag.Arg(0))
+			if err != nil {
+				log.Fatalf("Failed to open file %s for reading\n", flag.Arg(0))
+			}
+			i = f
 		}
-		i = f
 
 	default:
 		fmt.Fprintln(os.Stderr, "expecting 0 or 1 positional arguments")
@@ -115,13 +128,25 @@ func main() {
 	}
 
 	w := os.Stdout
-	if *outputfile != "" {
-		f, err := os.Create(*outputfile)
-		if err != nil {
-			log.Fatalf("Failed to open file %s for writing", *outputfile)
+	if *outputfile != DashStdinStdout {
+		if *outputfile != "" {
+			f, err := os.Create(*outputfile)
+			if err != nil {
+				log.Fatalf("Failed to open file %s for writing", *outputfile)
+			}
+			defer f.Close()
+			w = f
+		} else {
+		        // Only print notice if no explicit '-' is given, merge with tar notice:
+			if noticeStdinStdout != "" {
+				noticeStdinStdout += ", "
+			}
+			noticeStdinStdout += "writing rpm to stdout"
+
 		}
-		defer f.Close()
-		w = f
+	}
+	if noticeStdinStdout != "" {
+		fmt.Fprintln(os.Stderr, "tar2rpm: "+noticeStdinStdout+".")
 	}
 	r, err := rpmpack.FromTar(
 		i,

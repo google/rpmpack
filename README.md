@@ -23,10 +23,12 @@ This will make the `tar2rpm` tool available in `${GOPATH}/bin`, which by default
 
 ```
 Usage:
-  tar2rpm [OPTION] [FILE]
+  tar2rpm -name NAME -version VERSION [OPTION] [TARFILE]
+        Read tar content from stdin, or TARFILE if present. Write rpm to stdout, or the file given
+        by -file RPMFILE. If a filename is '-' use stdin/stdout without printing a notice.
 Options:
-  -file FILE
-        write rpm to FILE instead of stdout
+  -file RPMFILE
+        write rpm to RPMFILE instead of stdout
   -name string
         the package name
   -release string
