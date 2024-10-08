@@ -44,6 +44,7 @@ const (
 	// For reference, this is the max uint32 value, which is 4294967295.
 	NoEpoch                     = ^uint32(0)
 	DefaultScriptletInterpreter = "/bin/sh"
+	MagicLuaMarker              = "<lua>"
 )
 
 var (
@@ -52,12 +53,12 @@ var (
 	// ErrWrongFileOrder is returned when files are not sorted by name.
 	ErrWrongFileOrder = errors.New("wrong file addition order")
 	scriptletsTypes   = map[string]scriptletType{
-		"pretrans":     {tag: tagPretrans, programTag: tagPretransProg},
+		"pretrans":     {tag: tagPretrans, programTag: tagPretransProg, lua: true},
 		"prein":        {tag: tagPrein, programTag: tagPreinProg},
 		"postin":       {tag: tagPostin, programTag: tagPostinProg},
 		"preun":        {tag: tagPreun, programTag: tagPreunProg},
 		"postun":       {tag: tagPostun, programTag: tagPostunProg},
-		"posttrans":    {tag: tagPosttrans, programTag: tagPosttransProg},
+		"posttrans":    {tag: tagPosttrans, programTag: tagPosttransProg, lua: true},
 		"verifyscript": {tag: tagVerifyScript, programTag: tagVerifyScriptProg},
 	}
 )
@@ -129,6 +130,8 @@ type scriptlet struct {
 type scriptletType struct {
 	tag        int
 	programTag int
+	// different <lua> default interpreter (pretrans, posttrans)
+	lua bool
 }
 
 type explicitScriptlets struct {
@@ -515,13 +518,15 @@ func (r *RPM) implicitToExplicitScriptlets() explicitScriptlets {
 			continue
 		}
 		explicit := scriptlet{}
-		_, found := scriptletsTypes[name]
+		tagInfo, found := scriptletsTypes[name]
 		if !found {
 			panic(fmt.Sprintf("internal error: invalid scriptlet name %q", name))
 		}
 		explicit.content = s.content
-		if s.interpreter == "" {
+		if s.interpreter == "" && !tagInfo.lua {
 			explicit.interpreter = r.defaultScriptletInterpreter
+		} else if s.interpreter == "" && tagInfo.lua {
+			explicit.interpreter = MagicLuaMarker
 		} else {
 			explicit.interpreter = s.interpreter
 		}
@@ -533,7 +538,8 @@ func (r *RPM) implicitToExplicitScriptlets() explicitScriptlets {
 // Sets the default scriptlet interpreter (a.k.a. scriptlet program) used to call
 // scriptlets, defaults to `/bin/sh`. Does not reset an interpeter previously set by
 // `SetScriptletInterpreterFor()`.
-// An emtpy string resets to the default.
+// An emtpy string resets to the default. pretrans and posttrans usually use <lua> and are not
+// affected by this.
 // Note: The scriptlets of an rpm can be checked via `rpm -qp --scripts RPMFILE`.
 func (r *RPM) SetDefaultScriptletInterpreter(interpreter string) {
 	if interpreter == "" {
@@ -566,7 +572,7 @@ func (r *RPM) setScriptlet(name, content string) {
 	r.scriptlets[name] = item
 }
 
-// AddPretrans adds a pretrans scriptlet
+// AddPretrans adds a pretrans scriptlet, usually lua code
 func (r *RPM) AddPretrans(s string) {
 	r.setScriptlet("pretrans", s)
 }
@@ -591,7 +597,7 @@ func (r *RPM) AddPostun(s string) {
 	r.setScriptlet("postun", s)
 }
 
-// AddPosttrans adds a posttrans scriptlet
+// AddPosttrans adds a posttrans scriptlet, usually lua code
 func (r *RPM) AddPosttrans(s string) {
 	r.setScriptlet("posttrans", s)
 }
