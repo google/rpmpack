@@ -57,10 +57,12 @@ var (
 	url         = flag.String("url", "", "the rpm url")
 	licence     = flag.String("licence", "", "the rpm licence name")
 
-	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
-	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
-	preun  = flag.String("preun", "", "preun scriptlet contents (not filename)")
-	postun = flag.String("postun", "", "postun scriptlet contents (not filename)")
+	prein       = flag.String("prein", "", "prein scriptlet contents (not filename).")
+	postin      = flag.String("postin", "", "postin scriptlet contents (not filename).")
+	preun       = flag.String("preun", "", "preun scriptlet contents (not filename)")
+	postun      = flag.String("postun", "", "postun scriptlet contents (not filename)")
+	interpreter = flag.String("interpreter", rpmpack.DefaultScriptletProgram, "interpreter (scriptlet program) to run scriptlets with\n"+
+		"note: '-p /bin/program' on the first line of a scriptlet string runs it with this interpreter")
 
 	useDirAllowlist  = flag.Bool("use_dir_allowlist", false, "Only include dirs in the explicit allow list")
 	dirAllowlistFile = flag.String("dir_allowlist_file", "", "A file with one directory per line to include from the tar to the rpm")
@@ -195,6 +197,7 @@ func main() {
 		r.AllowListDirs(al)
 	}
 
+	r.SetScriptletProgram(*interpreter)
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
 	r.AddPreun(*preun)

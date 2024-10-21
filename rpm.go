@@ -42,7 +42,8 @@ const (
 	// We decided to use this approach instead of making epoch a *uint32 to
 	// avoid a breaking change.
 	// For reference, this is the max uint32 value, which is 4294967295.
-	NoEpoch = ^uint32(0)
+	NoEpoch                 = ^uint32(0)
+	DefaultScriptletProgram = "/bin/sh"
 )
 
 var (
@@ -98,6 +99,7 @@ type RPM struct {
 	filedigests       []string
 	filelinktos       []string
 	fileflags         []uint32
+	scriptletProgram  string
 	closed            bool
 	compressedPayload io.WriteCloser
 	files             map[string]RPMFile
@@ -138,6 +140,7 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	rpm := &RPM{
 		RPMMetaData:       m,
 		di:                newDirIndex(),
+		scriptletProgram:  DefaultScriptletProgram,
 		payload:           p,
 		compressedPayload: z,
 		cpio:              cpio.NewWriter(z),
@@ -273,6 +276,9 @@ func (r *RPM) Write(w io.Writer) error {
 	// Write the regular header.
 	h := newIndex(immutable)
 	r.writeGenIndexes(h)
+	if err := r.writeScriptlets(h); err != nil {
+		return fmt.Errorf("failed to write scriptlet: %w", err)
+	}
 
 	// do not write file indexes if there are no files (meta package)
 	// doing so will result in an invalid package
@@ -426,34 +432,69 @@ func (r *RPM) writeGenIndexes(h *index) {
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
 	h.Add(tagSourceRPM, EntryString(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
-	if r.pretrans != "" {
-		h.Add(tagPretrans, EntryString(r.pretrans))
-		h.Add(tagPretransProg, EntryString("/bin/sh"))
+}
+
+func (r *RPM) writeSingleScriptlet(h *index, scriptlet, name string, scriptletTag, scriptletProgramTag int) error {
+	if scriptlet != "" {
+		scriptletProgram := r.scriptletProgram
+		// All this manual parsing instead of a simple regex to provide detailed error messages like rpmbuild:
+		endOfLineIndex := strings.Index(scriptlet, "\n")
+		if endOfLineIndex == -1 {
+			endOfLineIndex = len(scriptlet)
+		}
+		firstLineTrimmed := strings.TrimSpace(scriptlet[:endOfLineIndex])
+		dashP := "-p"
+		if strings.HasPrefix(firstLineTrimmed, dashP) {
+			scriptletProgram = strings.TrimSpace(firstLineTrimmed[len(dashP):])
+			if len(scriptletProgram) == 0 {
+				return fmt.Errorf("no program after %s for %s found", dashP, name)
+			} else if scriptletProgram[0] != '/' {
+				return fmt.Errorf("program for %s does not begin with '/': %s", name, scriptletProgram)
+			} else if strings.IndexAny(scriptletProgram, " \t") != -1 {
+				return fmt.Errorf("program for %s must not contain whitespace: %s", name, scriptletProgram)
+			}
+			// Extra tests for failed newline introduction via ^V, <Enter> (should be ^V, ^J), or "\n" in a shell:
+			if strings.Index(scriptletProgram, "\r") != -1 {
+				return fmt.Errorf("program for %s must not contain \\r / CR / carriage return: %s", name, scriptletProgram)
+			} else if strings.Index(scriptletProgram, "\\n") != -1 {
+				return fmt.Errorf("program for %s contains newline escape sequence: %s", name, scriptletProgram)
+			}
+
+			scriptlet = scriptlet[endOfLineIndex:]
+		}
+		// If only an interpreter path is given then the `scriptlet` becomes a `program` which is called without arguments
+		if scriptlet != "" {
+			h.Add(scriptletTag, EntryString(scriptlet))
+		}
+		h.Add(scriptletProgramTag, EntryString(scriptletProgram))
 	}
-	if r.prein != "" {
-		h.Add(tagPrein, EntryString(r.prein))
-		h.Add(tagPreinProg, EntryString("/bin/sh"))
+	return nil
+}
+
+func (r *RPM) writeScriptlets(h *index) error {
+	if err := r.writeSingleScriptlet(h, r.pretrans, "pretrans", tagPretrans, tagPretransProg); err != nil {
+		return err
 	}
-	if r.postin != "" {
-		h.Add(tagPostin, EntryString(r.postin))
-		h.Add(tagPostinProg, EntryString("/bin/sh"))
+	if err := r.writeSingleScriptlet(h, r.prein, "prein", tagPrein, tagPreinProg); err != nil {
+		return err
 	}
-	if r.preun != "" {
-		h.Add(tagPreun, EntryString(r.preun))
-		h.Add(tagPreunProg, EntryString("/bin/sh"))
+	if err := r.writeSingleScriptlet(h, r.postin, "postin", tagPostin, tagPostinProg); err != nil {
+		return err
 	}
-	if r.postun != "" {
-		h.Add(tagPostun, EntryString(r.postun))
-		h.Add(tagPostunProg, EntryString("/bin/sh"))
+	if err := r.writeSingleScriptlet(h, r.preun, "preun", tagPreun, tagPreunProg); err != nil {
+		return err
 	}
-	if r.posttrans != "" {
-		h.Add(tagPosttrans, EntryString(r.posttrans))
-		h.Add(tagPosttransProg, EntryString("/bin/sh"))
+	if err := r.writeSingleScriptlet(h, r.postun, "postun", tagPostun, tagPostunProg); err != nil {
+		return err
 	}
-	if r.verifyscript != "" {
-		h.Add(tagVerifyScript, EntryString(r.verifyscript))
-		h.Add(tagVerifyScriptProg, EntryString("/bin/sh"))
+	if err := r.writeSingleScriptlet(h, r.posttrans, "posttrans", tagPosttrans, tagPosttransProg); err != nil {
+		return err
 	}
+	if err := r.writeSingleScriptlet(h, r.verifyscript, "verifyscript", tagVerifyScript, tagVerifyScriptProg); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // WriteFileIndexes writes file related index headers to the header
@@ -494,6 +535,18 @@ func (r *RPM) writeFileIndexes(h *index) {
 	h.Add(tagFileVerifyFlags, EntryInt32(verifyFlags))
 	h.Add(tagFileRDevs, EntryInt16(fileRDevs))
 	h.Add(tagFileLangs, EntryStringSlice(fileLangs))
+}
+
+// SetScriptletProgram sets the scriptlet program (i.e. interpreter) used to call the scriptlets, defaults
+// to `/bin/sh`. Every scriptlet can override its own program by adding `-p /bin/other/program`
+// to the first line of the scriptlet string (the program must not contain spaces or take arguments).
+// The scriptlets of an rpm can be checked via `rpm -qp --scripts RPMFILE`, also see
+//
+//	<https://docs.fedoraproject.org/en-US/packaging-guidelines/Scriptlets/#_syntax>
+func (r *RPM) SetScriptletProgram(s string) {
+	if s != "" {
+		r.scriptletProgram = s
+	}
 }
 
 // AddPretrans adds a pretrans scriptlet
