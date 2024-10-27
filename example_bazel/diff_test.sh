@@ -17,17 +17,13 @@
 set -o nounset
 
 diff_test () {
-  local cmd="$1"
+  local result="$1"
   local want="$2"
   local got
-  got="$(set -o pipefail; "$cmd" | sed '1,/===marker===/ d')"
-  if [[ "$?" -ne 0 ]]; then
-    echo "${cmd}: run failed" >&2
-    return 1
-  fi
- 
+  got="$(cat "$result" | sed '1,/===marker===/ d')"
+
   if ! diff <( echo "$want") <(echo "$got"); then
-    echo "${cmd}: diff failed or differences found" >&2
+    echo "diff failed or differences found" >&2
     return 1
   fi
   return 0
@@ -37,6 +33,6 @@ read -r -d '' GOLDEN_STR << EOF
 {GOLDEN}
 EOF
 
-diff_test "{CMD}" "${GOLDEN_STR}"
+diff_test "{RESULT}" "${GOLDEN_STR}"
 
 exit $?
