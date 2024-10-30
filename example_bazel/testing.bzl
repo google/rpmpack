@@ -1,15 +1,18 @@
 
 def _docker_run_impl(ctx):
-    ctx.actions.expand_template(
-        template = ctx.file._template,
-        output = ctx.outputs.file,
-        is_executable = True,
-        substitutions = {
-            "{CMD}": ctx.attr.cmd,
-            "{TAR}": ctx.file.tar.short_path,
-            "{IMAGE}": ctx.attr.image,
-        },
+    out = ctx.actions.declare_file(ctx.label.name)
+    args = ctx.actions.args()
+    args.add(out)
+    args.add(ctx.attr.cmd)
+    args.add(ctx.file.tar)
+    args.add(ctx.attr.image)
+    ctx.actions.run(
+        outputs = [out],
+        inputs = [ctx.file.tar],
+        executable = ctx.file._script,
+        arguments = [args],
     )
+    return DefaultInfo(files = depset([out]))
 
 docker_run = rule(
     attrs = {
@@ -23,12 +26,11 @@ docker_run = rule(
         "cmd": attr.string(
             mandatory = True,
         ),
-        "_template": attr.label(
+        "_script": attr.label(
             default = "//:docker_run.sh",
             allow_single_file = True,
         ),
     },
-    outputs = {"file": "%{name}.sh"},
     implementation = _docker_run_impl,
 )
 
@@ -37,14 +39,15 @@ def _diff_test_impl(ctx):
         template = ctx.file._template,
         output = ctx.outputs.file,
         substitutions = {
-            "{CMD}": ctx.file.cmd.short_path,
+            "{RESULT}": ctx.file.result.short_path,
             "{GOLDEN}": ctx.attr.golden,
         },
     )
+    return DefaultInfo(runfiles = ctx.runfiles(files = ctx.files.result))
 
 diff_test_expand = rule(
     attrs = {
-        "cmd": attr.label(
+        "result": attr.label(
             mandatory = True,
             allow_single_file = True,
         ),
@@ -70,7 +73,7 @@ def docker_diff(name,cmd, golden, tar=":rpms", image="",  base=""):
     )
     diff_test_expand(
         name = name + "_diff",
-        cmd = ":%s_run" % name,
+        result = ":%s_run" % name,
         golden = golden,
         testonly = True,
     )

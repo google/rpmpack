@@ -26,7 +26,9 @@ docker_run () {
     "${image}" \
     bash -c "tar -C root -xvf /rpms.tar && ${cmd}"
 }
+OUT="$1"
+shift
 
-docker_run "{CMD}" "{TAR}" "{IMAGE}"
+docker_run "$@" > $OUT
 
 exit $?
