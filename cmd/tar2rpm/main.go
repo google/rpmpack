@@ -33,6 +33,17 @@ const (
 	DashStdinStdout = "-"
 )
 
+type argSlice []string
+
+func (s *argSlice) String() string {
+	return fmt.Sprintf("%v", *s)
+}
+
+func (s *argSlice) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
+
 var (
 	provides,
 	obsoletes,
@@ -57,10 +68,16 @@ var (
 	url         = flag.String("url", "", "the rpm url")
 	licence     = flag.String("licence", "", "the rpm licence name")
 
-	prein  = flag.String("prein", "", "prein scriptlet contents (not filename)")
-	postin = flag.String("postin", "", "postin scriptlet contents (not filename)")
-	preun  = flag.String("preun", "", "preun scriptlet contents (not filename)")
-	postun = flag.String("postun", "", "postun scriptlet contents (not filename)")
+	prein     = flag.String("prein", "", "prein scriptlet contents (not filename).")
+	postin    = flag.String("postin", "", "postin scriptlet contents (not filename).")
+	preun     = flag.String("preun", "", "preun scriptlet contents (not filename)")
+	postun    = flag.String("postun", "", "postun scriptlet contents (not filename)")
+	pretrans  = flag.String("pretrans", "", "pretrans scriptlet contents (not filename, lua code [+])")
+	posttrans = flag.String("posttrans", "", "posttrans scriptlet contents (not filename, lua code [+])")
+	verify    = flag.String("verifyscript", "", "verifyscript scriptlet contents (not filename)")
+
+	interpreter    = flag.String("interpreter", rpmpack.DefaultScriptletInterpreter, "interpreter (scriptlet program) to run scriptlets with")
+	interpreterFor argSlice
 
 	useDirAllowlist  = flag.Bool("use_dir_allowlist", false, "Only include dirs in the explicit allow list")
 	dirAllowlistFile = flag.String("dir_allowlist_file", "", "A file with one directory per line to include from the tar to the rpm")
@@ -86,6 +103,9 @@ func main() {
 	flag.Var(&recommends, "recommends", "rpm recommends values, can be just name or in the form of name=version (eg. bla=1.2.3)")
 	flag.Var(&requires, "requires", "rpm requires values, can be just name or in the form of name=version (eg. bla=1.2.3)")
 	flag.Var(&conflicts, "conflicts", "rpm provides values, can be just name or in the form of name=version (eg. bla=1.2.3)")
+	flag.Var(&interpreterFor, "interpreter_for", "override interpreter for a scriptlet, format `NAME:INTERPRETER`, where NAME is one of\n"+
+		"prein postin preun postun verifyscript, e.g. prein:/bin/bash\n"+
+		"[+]: pretrans and posttrans use '<lua>' by default, which is not changed by -interpreter")
 	flag.Usage = usage
 	flag.Parse()
 	if *name == "" || *version == "" {
@@ -137,7 +157,7 @@ func main() {
 			defer f.Close()
 			w = f
 		} else {
-		        // Only print notice if no explicit '-' is given, merge with tar notice:
+			// Only print notice if no explicit '-' is given, merge with tar notice:
 			if noticeStdinStdout != "" {
 				noticeStdinStdout += ", "
 			}
@@ -178,6 +198,19 @@ func main() {
 		fmt.Fprintf(os.Stderr, "tar2rpm error: %v\n", err)
 		os.Exit(1)
 	}
+
+	r.SetScriptletInterpreter(*interpreter)
+	for _, arg := range interpreterFor {
+		parts := strings.SplitN(arg, ":", 2)
+		if len(parts) != 2 {
+			fmt.Fprintf(os.Stderr, "invalid -interpreter_for argument %q: must contain ':'\n", arg)
+			os.Exit(1)
+		}
+		if err := r.SetScriptletInterpreterFor(parts[0], parts[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "invalid -interpreter_for argument %q: %v\n", arg, err)
+			os.Exit(1)
+		}
+	}
 	if *useDirAllowlist {
 		al := map[string]bool{}
 		if *dirAllowlistFile != "" {
@@ -195,10 +228,13 @@ func main() {
 		r.AllowListDirs(al)
 	}
 
+	r.AddPretrans(*pretrans)
 	r.AddPrein(*prein)
 	r.AddPostin(*postin)
 	r.AddPreun(*preun)
 	r.AddPostun(*postun)
+	r.AddPosttrans(*posttrans)
+	r.AddVerifyScript(*verify)
 
 	if err := r.Write(w); err != nil {
 		fmt.Fprintf(os.Stderr, "rpm write error: %v\n", err)
