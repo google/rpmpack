@@ -45,6 +45,7 @@ const (
 	NoEpoch                     = ^uint32(0)
 	DefaultScriptletInterpreter = "/bin/sh"
 	MagicLuaMarker              = "<lua>"
+	NoCompressor                = "copy"
 )
 
 var (
@@ -183,6 +184,18 @@ func NewRPM(m RPMMetaData) (*RPM, error) {
 	return rpm, nil
 }
 
+type copyData struct {
+	w io.Writer
+}
+
+func (c *copyData) Write(data []byte) (int, error) {
+	return c.w.Write(data)
+}
+
+func (c *copyData) Close() error {
+	return nil
+}
+
 func setupCompressor(
 	compressorSetting string,
 	w io.Writer,
@@ -199,6 +212,8 @@ func setupCompressor(
 	}
 
 	switch compressorType {
+	case NoCompressor:
+		return &copyData{w}, NoCompressor, nil
 	case "":
 		compressorType = "gzip"
 		fallthrough
@@ -431,7 +446,9 @@ func (r *RPM) writeGenIndexes(h *index) {
 	}
 	h.Add(tagRelease, EntryString(r.Release))
 	h.Add(tagPayloadFormat, EntryString("cpio"))
-	h.Add(tagPayloadCompressor, EntryString(r.Compressor))
+	if r.Compressor != NoCompressor {
+		h.Add(tagPayloadCompressor, EntryString(r.Compressor))
+	}
 	h.Add(tagPayloadFlags, EntryString("9"))
 	h.Add(tagArch, EntryString(r.Arch))
 	h.Add(tagOS, EntryString(r.OS))
