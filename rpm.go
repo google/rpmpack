@@ -264,7 +264,7 @@ func (r *RPM) Write(w io.Writer) error {
 		return fmt.Errorf("failed to close cpio payload: %w", err)
 	}
 	if err := r.compressedPayload.Close(); err != nil {
-		return fmt.Errorf("failed to close gzip payload: %w", err)
+		return fmt.Errorf("failed to close %s payload: %w", r.RPMMetaData.Compressor, err)
 	}
 
 	if _, err := w.Write(lead(r.Name, r.FullVersion())); err != nil {
