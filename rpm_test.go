@@ -115,6 +115,11 @@ func TestCompression(t *testing.T) {
 			Compressors:    []string{"xz:worst"},
 			ExpectedWriter: nil, // only integers levels or one of the pre-defined string values
 		},
+		{
+			Type:           "copy",
+			Compressors:    []string{"copy"},
+			ExpectedWriter: &copyData{},
+		},
 	}
 
 	for _, testCase := range testCases {
