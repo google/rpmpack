@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	// "Magic" filename: instead of reading/writing to that file use stdin/stdout (can still be used via './-').
+	// DashStdinStdout is the pseudo-filename for stdin/stdout.
 	DashStdinStdout = "-"
 )
 

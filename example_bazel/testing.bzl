@@ -1,4 +1,3 @@
-
 def _docker_run_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name)
     args = ctx.actions.args()
@@ -11,6 +10,7 @@ def _docker_run_impl(ctx):
         inputs = [ctx.file.tar],
         executable = ctx.file._script,
         arguments = [args],
+        mnemonic = "DockerRun",
     )
     return DefaultInfo(files = depset([out]))
 
@@ -63,13 +63,13 @@ diff_test_expand = rule(
     implementation = _diff_test_impl,
 )
 
-def docker_diff(name,cmd, golden, tar=":rpms", image="",  base=""):
+def docker_diff(name, cmd, golden, tar = ":rpms", image = "", base = ""):
     docker_run(
-     name = name + "_run",
-     testonly = True,
-     tar = tar,
-     image = image,
-     cmd = cmd,
+        name = name + "_run",
+        testonly = True,
+        tar = tar,
+        image = image,
+        cmd = cmd,
     )
     diff_test_expand(
         name = name + "_diff",
