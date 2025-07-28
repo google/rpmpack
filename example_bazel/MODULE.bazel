@@ -1,6 +1,6 @@
 module(
     name = "rpmpack_example_bazel",
-    version = "0.6.0",
+    version = "0.7.1",
 )
 
 ##############################################################################
@@ -22,10 +22,10 @@ python.toolchain(
 # End of workaround.
 ##############################################################################
 
-bazel_dep(name = "rpmpack", version = "0.6.0")
+bazel_dep(name = "rpmpack")
 local_path_override(
     module_name = "rpmpack",
     path = "../",
 )
 
-bazel_dep(name = "rules_pkg", version = "1.0.1")
+bazel_dep(name = "rules_pkg", version = "1.1.0")
