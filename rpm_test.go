@@ -182,6 +182,51 @@ func TestAllowListDirs(t *testing.T) {
 	}
 }
 
+func TestSourceRPMNoSourceRPMTag(t *testing.T) {
+	r, err := NewRPM(RPMMetaData{
+		Name:      "test",
+		Version:   "1.0",
+		Release:   "1",
+		Summary:   "test summary",
+		Licence:   "MIT",
+		SourceRPM: true,
+	})
+	if err != nil {
+		t.Fatalf("NewRPM returned error %v", err)
+	}
+
+	var b bytes.Buffer
+	if err := r.Write(&b); err != nil {
+		t.Fatalf("Write returned error %v", err)
+	}
+
+	data := b.Bytes()
+	sourceRPMValue := "test-1.0-1.src.rpm"
+	if bytes.Contains(data, []byte(sourceRPMValue)) {
+		t.Errorf("source RPM should not contain SOURCERPM tag value %q, but found it", sourceRPMValue)
+	}
+
+	r2, err := NewRPM(RPMMetaData{
+		Name:    "test",
+		Version: "1.0",
+		Release: "1",
+		Summary: "test summary",
+		Licence: "MIT",
+	})
+	if err != nil {
+		t.Fatalf("NewRPM returned error %v", err)
+	}
+
+	b.Reset()
+	if err := r2.Write(&b); err != nil {
+		t.Fatalf("Write returned error %v", err)
+	}
+
+	if !bytes.Contains(b.Bytes(), []byte(sourceRPMValue)) {
+		t.Errorf("binary RPM should contain SOURCERPM tag value %q, but did not find it", sourceRPMValue)
+	}
+}
+
 func TestMinimalSpec(t *testing.T) {
 	r, err := NewRPM(RPMMetaData{
 		Name:        "test",

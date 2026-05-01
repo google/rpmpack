@@ -73,6 +73,9 @@ type RPMMetaData struct {
 	// Prefixes is used for relocatable packages, usually with a one item
 	// slice, e.g. `["/opt"]`.
 	Prefixes []string
+	// SourceRPM indicates this is a source RPM (as opposed to a binary RPM).
+	// When true, the SOURCERPM tag is omitted from the header.
+	SourceRPM bool
 	Provides,
 	Obsoletes,
 	Suggests,
@@ -425,7 +428,9 @@ func (r *RPM) writeGenIndexes(h *index) {
 
 	// rpm utilities look for the sourcerpm tag to deduce if this is not a source rpm (if it has a sourcerpm,
 	// it is NOT a source rpm).
-	h.Add(tagSourceRPM, EntryString(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
+	if !r.SourceRPM {
+		h.Add(tagSourceRPM, EntryString(fmt.Sprintf("%s-%s.src.rpm", r.Name, r.FullVersion())))
+	}
 	if r.pretrans != "" {
 		h.Add(tagPretrans, EntryString(r.pretrans))
 		h.Add(tagPretransProg, EntryString("/bin/sh"))
