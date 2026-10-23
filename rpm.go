@@ -383,7 +383,6 @@ func (r *RPM) AddCustomSig(tag int, e IndexEntry) {
 }
 
 func (r *RPM) writeGenIndexes(h *index) {
-	h.Add(tagHeaderI18NTable, EntryString("C"))
 	h.Add(tagSize, EntryInt32([]int32{int32(r.payloadSize)}))
 	h.Add(tagName, EntryString(r.Name))
 	h.Add(tagVersion, EntryString(r.Version))
